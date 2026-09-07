@@ -20,6 +20,30 @@ macOS:
   (Nebo v Terminálu jednou spusťte: chmod +x OpenFaktura.command)
 
 
+VERZE A AKTUALIZACE
+-------------------
+Číslo verze vidíte vlevo nahoře u názvu (např. v1.1.0) a v souboru
+verze.json. Značení je číslo.číslo.číslo:
+  1.x.x  velká změna (nový vzhled, nový formát dat)
+  x.1.x  nová funkce (např. slučování zakázek)
+  x.x.1  drobná oprava
+
+V sekci 6 „Aktualizace“ program zkontroluje, zda je na internetu novější
+verze, a tlačítkem Aktualizovat ji stáhne a sám se restartuje.
+Přepisují se JEN programové soubory uvedené ve verze.json (server.js,
+web/…). Složky data/ a pdf-faktury/ s vašimi fakturami, odběrateli
+a nastavením se nikdy nepřepisují, stejně jako runtime/.
+Pokud stažení selže, program zůstane v původní verzi.
+
+Adresa, odkud se aktualizace stahují, je v server.js (AKTUALIZACE_URL).
+Lze ji přepsat v data/nastaveni.json klíčem "aktualizaceUrl".
+
+Pro vývojáře: při vydání nové verze zvyšte číslo ve verze.json, doplňte
+datum a popis a nahrajte změny na git. Datové soubory v data/ smí získat
+jen nová nepovinná pole, nikdy neměňte význam nebo název stávajících,
+aby starší data po aktualizaci fungovala.
+
+
 ZÁLOHA
 ------
 Zálohu uděláte prostým zkopírováním celé složky OpenFaktura
@@ -39,6 +63,7 @@ CO JE UVNITŘ
 ------------
   OpenFaktura.bat / .command   spouštěče
   server.js                    lokální server (Node, bez závislostí)
+  verze.json                   číslo verze a seznam programových souborů
   web/                         aplikace (frontend)
   lib/ (uvnitř web/)           pdfmake + fonty + QR
   runtime/                     přibalený Node pro Windows a Mac

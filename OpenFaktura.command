@@ -19,8 +19,12 @@ if [ ! -f "$NODE" ]; then
   exit 1
 fi
 
-echo "Spouštím OpenFaktura…"
-"$NODE" server.js
+# návratový kód 75 = server se po aktualizaci chce restartovat
+while true; do
+  echo "Spouštím OpenFaktura…"
+  "$NODE" server.js
+  [ $? -eq 75 ] || break
+done
 
 echo ""
 echo "OpenFaktura byla ukončena. Toto okno můžeš zavřít."

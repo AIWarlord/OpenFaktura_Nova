@@ -8,3 +8,7 @@ runtime/
 # systemove soubory
 .DS_Store
 Thumbs.db
+
+# docasne slozky aktualizace
+aktualizace-tmp/
+aktualizace-zaloha/

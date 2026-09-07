@@ -11,6 +11,7 @@ const fs   = require('fs');
 const fsp  = require('fs/promises');
 const path = require('path');
 const { spawn } = require('child_process');
+const vm   = require('vm');
 
 const ROOT     = __dirname;
 const WEB_DIR  = path.join(ROOT, 'web');
@@ -21,6 +22,16 @@ const PDF_DIR  = path.join(ROOT, 'pdf-faktury');
 const NASTAVENI = path.join(DATA_DIR, 'nastaveni.json');
 const ODBERATELE = path.join(DATA_DIR, 'odberatele.json');
 const DRAFT      = path.join(DATA_DIR, 'rozpracovana.json');
+
+/* ---- verze a aktualizace ----
+   verze.json v kořeni programu nese číslo verze a seznam programových souborů.
+   Aktualizace stáhne z adresy AKTUALIZACE_URL (lze přepsat v data/nastaveni.json
+   klíčem "aktualizaceUrl") nový verze.json a soubory v něm uvedené. Složky
+   data/, pdf-faktury/ a runtime/ se NIKDY nepřepisují — uživatelská data zůstávají. */
+const VERZE_FILE = path.join(ROOT, 'verze.json');
+const AKTUALIZACE_URL = 'https://raw.githubusercontent.com/AIWarlord/OpenFaktura_Nova/main/';
+const CHRANENE = ['data', 'pdf-faktury', 'runtime', 'OpenFaktura.bat', 'OpenFaktura.command', '.git', 'verze.json'];
+const RESTART_KOD = 75;   /* spouštěč (.bat / .command) při tomto kódu server znovu spustí */
 
 /* ---- výchozí data při prvním spuštění (prázdná kopie) ---- */
 const DEFAULT_NASTAVENI = {
@@ -65,6 +76,101 @@ async function listInvoices(){
   }
   out.sort((a,b) => (b.issue||'').localeCompare(a.issue||'') || String(b.number).localeCompare(String(a.number)));
   return out;
+}
+
+/* ---- verze / aktualizace ---- */
+function readVerze(){
+  try { return JSON.parse(fs.readFileSync(VERZE_FILE, 'utf8')); }
+  catch(e){ return { verze:'0.0.0', datum:'', popis:'', soubory:[] }; }
+}
+function cmpVerze(a, b){
+  const pa = String(a||'').split('.').map(n => parseInt(n,10)||0);
+  const pb = String(b||'').split('.').map(n => parseInt(n,10)||0);
+  for(let i=0;i<3;i++){ const d = (pa[i]||0) - (pb[i]||0); if(d) return d; }
+  return 0;
+}
+function safeRel(p){
+  /* relativní cesta uvnitř složky programu, mimo chráněné složky/soubory */
+  if(typeof p !== 'string' || !p.trim()) return null;
+  const n = p.trim().replace(/\\/g,'/').replace(/^\.\//,'');
+  if(n.startsWith('/') || n.includes('..') || /^[a-z]:/i.test(n)) return null;
+  if(CHRANENE.includes(n.split('/')[0])) return null;
+  const full = path.resolve(ROOT, n);
+  if(!full.startsWith(ROOT + path.sep)) return null;
+  return n;
+}
+async function stahni(url){
+  const r = await fetch(url, { signal: AbortSignal.timeout(20000), headers:{ 'Cache-Control':'no-cache' } });
+  if(!r.ok) throw new Error('Stažení selhalo (' + r.status + '): ' + url);
+  return Buffer.from(await r.arrayBuffer());
+}
+async function zdrojAktualizace(){
+  const nast = await readJson(NASTAVENI, DEFAULT_NASTAVENI);
+  let u = (nast && typeof nast.aktualizaceUrl === 'string' && nast.aktualizaceUrl.trim()) || AKTUALIZACE_URL;
+  if(!u.endsWith('/')) u += '/';
+  return u;
+}
+async function zkontrolujAktualizaci(){
+  const zdroj = await zdrojAktualizace();
+  const local = readVerze();
+  let remote;
+  try { remote = JSON.parse((await stahni(zdroj + 'verze.json?t=' + Date.now())).toString('utf8')); }
+  catch(e){ throw new Error('Nepodařilo se zjistit dostupnou verzi (' + (e && e.message || e) + ').'); }
+  if(!remote || typeof remote.verze !== 'string') throw new Error('Vzdálený verze.json má neplatný formát.');
+  return {
+    aktualni: local.verze, dostupna: remote.verze, datum: remote.datum || '', popis: remote.popis || '',
+    novejsi: cmpVerze(remote.verze, local.verze) > 0, zdroj, _remote: remote
+  };
+}
+async function copyIfExists(from, to){
+  try { await fsp.access(from); } catch(e){ return false; }
+  await fsp.mkdir(path.dirname(to), { recursive:true });
+  await fsp.copyFile(from, to);
+  return true;
+}
+async function provedAktualizaci(){
+  const info = await zkontrolujAktualizaci();
+  if(!info.novejsi) return { ok:false, error:'Máte aktuální verzi (' + info.aktualni + ').' };
+  const remote = info._remote;
+  const files = [...new Set((remote.soubory || []).map(safeRel).filter(Boolean))];
+  if(!files.length) throw new Error('Vzdálený verze.json neobsahuje žádné soubory k aktualizaci.');
+
+  const tmp = path.join(ROOT, 'aktualizace-tmp');
+  const bak = path.join(ROOT, 'aktualizace-zaloha');
+  await fsp.rm(tmp, { recursive:true, force:true });
+  await fsp.rm(bak, { recursive:true, force:true });
+  await fsp.mkdir(tmp, { recursive:true });
+
+  /* 1) nejdřív VŠE stáhnout do dočasné složky — když cokoli selže, program zůstane netknutý */
+  for(const f of files){
+    const buf = await stahni(info.zdroj + f.split('/').map(encodeURIComponent).join('/') + '?t=' + Date.now());
+    if(!buf.length) throw new Error('Stažený soubor je prázdný: ' + f);
+    const dest = path.join(tmp, f);
+    await fsp.mkdir(path.dirname(dest), { recursive:true });
+    await fsp.writeFile(dest, buf);
+  }
+  /* 2) kontrola: nový server.js musí být syntakticky v pořádku, jinak by se program po restartu nespustil */
+  if(files.includes('server.js')){
+    try { new vm.Script(await fsp.readFile(path.join(tmp,'server.js'),'utf8'), { filename:'server.js' }); }
+    catch(e){ throw new Error('Stažený server.js je poškozený, aktualizace zrušena: ' + e.message); }
+  }
+  /* 3) záloha současných souborů a nasazení; při chybě se vše vrátí ze zálohy */
+  for(const f of files) await copyIfExists(path.join(ROOT,f), path.join(bak,f));
+  try {
+    for(const f of files){
+      const dest = path.join(ROOT, f);
+      await fsp.mkdir(path.dirname(dest), { recursive:true });
+      await fsp.copyFile(path.join(tmp,f), dest);
+    }
+    const { soubory, ...zbytek } = remote;
+    await writeJsonAtomic(VERZE_FILE, { ...zbytek, soubory: files });
+  } catch(e){
+    for(const f of files) await copyIfExists(path.join(bak,f), path.join(ROOT,f)).catch(()=>{});
+    throw new Error('Nasazení selhalo, původní soubory obnoveny: ' + e.message);
+  }
+  await fsp.rm(tmp, { recursive:true, force:true });
+  await fsp.rm(bak, { recursive:true, force:true });
+  return { ok:true, verze: remote.verze, restart:true };
 }
 
 /* ---- HTTP pomůcky ---- */
@@ -113,7 +219,33 @@ async function handleApi(req, res, url){
       readJson(DRAFT, null),
       listInvoices()
     ]);
-    return sendJson(res, 200, { nastaveni, odberatele, draft, faktury });
+    return sendJson(res, 200, { nastaveni, odberatele, draft, faktury, verze: readVerze().verze });
+  }
+
+  // GET /api/verze — verze běžícího programu
+  if(m === 'GET' && seg[0] === 'verze' && seg.length === 1){
+    const v = readVerze();
+    return sendJson(res, 200, { verze: v.verze, datum: v.datum || '', popis: v.popis || '' });
+  }
+
+  // GET /api/aktualizace — zjistí, zda je na zdroji novější verze
+  if(m === 'GET' && seg[0] === 'aktualizace' && seg.length === 1){
+    try {
+      const { _remote, ...info } = await zkontrolujAktualizaci();
+      return sendJson(res, 200, info);
+    } catch(e){ return sendJson(res, 502, { error: String(e && e.message || e) }); }
+  }
+
+  // POST /api/aktualizace — stáhne a nasadí novou verzi, poté se server restartuje
+  if(m === 'POST' && seg[0] === 'aktualizace' && seg.length === 1){
+    try {
+      const r = await provedAktualizaci();
+      if(r.ok && r.restart){
+        console.log('\n  Aktualizováno na verzi ' + r.verze + ' — restartuji server…');
+        setTimeout(() => process.exit(RESTART_KOD), 800);
+      }
+      return sendJson(res, r.ok ? 200 : 409, r);
+    } catch(e){ return sendJson(res, 500, { error: String(e && e.message || e) }); }
   }
 
   // PUT /api/nastaveni
@@ -236,7 +368,7 @@ function start(port, triesLeft){
   });
   server.listen(port, '127.0.0.1', () => {
     const url = 'http://localhost:' + port + '/';
-    console.log('\n  OpenFaktura běží na  ' + url);
+    console.log('\n  OpenFaktura ' + readVerze().verze + ' běží na  ' + url);
     console.log('  Data:  ' + DATA_DIR);
     console.log('  PDF:   ' + PDF_DIR);
     console.log('\n  Toto okno nechte otevřené. Zavřením okna aplikaci ukončíte.\n');

@@ -53,7 +53,8 @@ input,select,textarea{font:inherit;color:var(--ink)}
 }
 .brand h1{font-size:1.05rem;font-weight:700;letter-spacing:.01em}
 .brand h1 span{color:var(--accent)}
-.brand .ver{font-size:.72rem;color:var(--ink-soft)}
+.brand .ver{font-size:.72rem;color:var(--ink-soft);white-space:nowrap}
+.brand .ver.upd{color:var(--accent);font-weight:600;cursor:pointer}
 .sec{border-bottom:1px solid var(--line);padding:16px 22px 20px}
 .sec h2{
   font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;
@@ -245,7 +246,7 @@ input,select,textarea{font:inherit;color:var(--ink)}
   <aside class="rail">
     <div class="brand">
       <h1>Open<span>Faktura</span></h1>
-      <span class="ver">lokální · data na disku</span>
+      <span class="ver" id="verBadge" title="Verze programu · data na disku">v…</span>
     </div>
 
     <!-- Faktura -->
@@ -350,6 +351,17 @@ input,select,textarea{font:inherit;color:var(--ink)}
       </div>
       <div class="arch" id="archBox" style="margin-top:12px"></div>
       <p class="hint">Kliknutím na řádek fakturu otevřete. Na štítku přepnete Uhrazeno / Čeká. Všechna data leží v této složce (<b>data/</b>) — záloha = zkopírovat celou složku OpenFaktura.</p>
+    </section>
+
+    <!-- Aktualizace -->
+    <section class="sec" id="secUpdate">
+      <h2><span class="n">6</span>Aktualizace</h2>
+      <p class="hint" id="updNote" style="margin-top:0">Verze programu se načítá…</p>
+      <div class="btnbar">
+        <button class="btn small" id="btnUpdCheck">Zkontrolovat aktualizace</button>
+        <button class="btn primary small" id="btnUpdApply" hidden>Aktualizovat</button>
+      </div>
+      <p class="hint">Aktualizace stáhne jen programové soubory. Vaše faktury, odběratelé a nastavení (<b>data/</b>, <b>pdf-faktury/</b>) zůstávají netknuté. Po aktualizaci se program sám restartuje.</p>
     </section>
   </aside>
 
@@ -1079,6 +1091,68 @@ function flash(msg, isErr){
   flashTimer = setTimeout(() => { el.textContent = 'Data se ukládají na disk u serveru.'; el.style.color = ''; }, 4000);
 }
 
+/* ================= Verze a aktualizace ================= */
+let verze = '';
+let dostupnaAktualizace = null;   /* info z GET /api/aktualizace, když je novější verze */
+function showVerze(){
+  const b = $('verBadge');
+  if(dostupnaAktualizace){
+    b.textContent = 'v' + verze + ' → ' + dostupnaAktualizace.dostupna;
+    b.classList.add('upd'); b.title = 'Je k dispozici nová verze ' + dostupnaAktualizace.dostupna + ' — klikněte';
+  } else {
+    b.textContent = 'v' + (verze || '?');
+    b.classList.remove('upd'); b.title = 'Verze programu · data na disku';
+  }
+}
+function updNote(msg, isErr){ const el = $('updNote'); el.textContent = msg; el.style.color = isErr ? 'var(--warn)' : ''; }
+async function checkUpdate(silent){
+  const btn = $('btnUpdCheck'); btn.disabled = true;
+  if(!silent) updNote('Zjišťuji dostupnou verzi…');
+  try{
+    const r = await api.get('/api/aktualizace');
+    if(r.novejsi){
+      dostupnaAktualizace = r;
+      $('btnUpdApply').hidden = false;
+      updNote('Je k dispozici verze ' + r.dostupna + (r.datum ? ' (' + r.datum + ')' : '') + (r.popis ? ': ' + r.popis : '') + '. Máte verzi ' + r.aktualni + '.');
+    } else {
+      dostupnaAktualizace = null;
+      $('btnUpdApply').hidden = true;
+      updNote('Máte aktuální verzi ' + r.aktualni + '.');
+    }
+  } catch(e){
+    if(!silent) updNote('Kontrola se nezdařila: ' + e.message + ' Zkontrolujte připojení k internetu.', true);
+    else updNote('Verze ' + verze + '. Dostupnost aktualizací se nepodařilo ověřit (offline?).');
+  }
+  btn.disabled = false; showVerze();
+}
+async function waitForRestart(newVer){
+  /* server se po aktualizaci ukončí a spouštěč ho spustí znovu — počkáme, až naběhne s novou verzí */
+  for(let i=0;i<40;i++){
+    await new Promise(r => setTimeout(r, 1000));
+    try{ const v = await api.get('/api/verze'); if(v.verze === newVer){ location.reload(); return; } }
+    catch(e){}
+  }
+  updNote('Aktualizace na verzi ' + newVer + ' je nainstalovaná, ale server se sám nespustil. Zavřete okno serveru a spusťte znovu OpenFaktura.bat / OpenFaktura.command.', true);
+}
+async function applyUpdate(){
+  if(!dostupnaAktualizace) return;
+  const btn = $('btnUpdApply'); btn.disabled = true; $('btnUpdCheck').disabled = true;
+  updNote('Stahuji verzi ' + dostupnaAktualizace.dostupna + '… Nezavírejte okno serveru.');
+  try{
+    const r = await fetch('/api/aktualizace', { method:'POST' });
+    const j = await r.json().catch(() => ({}));
+    if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    updNote('Nainstalována verze ' + j.verze + '. Server se restartuje, stránka se za chvíli obnoví sama…');
+    waitForRestart(j.verze);
+  } catch(e){
+    updNote('Aktualizace se nezdařila: ' + e.message + ' Program běží dál v původní verzi.', true);
+    btn.disabled = false; $('btnUpdCheck').disabled = false;
+  }
+}
+$('btnUpdCheck').addEventListener('click', () => checkUpdate(false));
+$('btnUpdApply').addEventListener('click', applyUpdate);
+$('verBadge').addEventListener('click', () => { if(dostupnaAktualizace) $('secUpdate').scrollIntoView({ behavior:'smooth' }); });
+
 /* ================= Preview scaling ================= */
 function scaleSheet(){
   const wrap = $('sheetWrap'), scale = $('sheetScale');
@@ -1107,8 +1181,11 @@ async function boot(){
   state = b.draft || freshState();
   if(state.vatRate === undefined) state.vatRate = 21;
   if(!state.supplier) state.supplier = {...nastaveni.supplier};
+  verze = b.verze || '';
+  showVerze(); updNote('Verze ' + (verze || '?') + '.');
   fillForm(); renderCustomers(); renderFaktury(); refresh();
   scaleSheet(); setTimeout(scaleSheet, 50);
+  setTimeout(() => checkUpdate(true), 1500);
 }
 boot();
 </script>
