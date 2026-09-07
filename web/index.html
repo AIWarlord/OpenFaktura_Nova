@@ -508,7 +508,7 @@ function grandTotalDue(){ return grandTotal() + vatAmount(); }
 const SLUCOVANI = {
   zadne:   'Jednotlivě po zakázkách',
   albert:  'Albert po skupinách, ostatní jednotlivě',
-  skupiny: 'Všichni po skupinách (Albert Komunikace po týmech; New Business a Line Art jednotlivě)'
+  skupiny: 'Všichni po skupinách (Albert Komunikace po vedoucích; New Business a Line Art jednotlivě)'
 };
 const SLUCOVANI_VYCHOZI = 'albert';
 
@@ -526,26 +526,38 @@ function mergeDepth(zakaznik, varianta){
   if(np[0] === 'albert' && (np[1]||'').includes('komunikace')) return 3;  /* Albert Komunikace — po týmech */
   return 2;
 }
-/* Z pole surových řádků {cislo, zakaznik, zakazka, hodiny} vyrobí položky faktury podle zvolené varianty. */
+/* Z pole surových řádků {cislo, zakaznik, zakazka, hodiny, vedouci} vyrobí položky faktury podle zvolené varianty.
+   Hloubka 3 (Albert Komunikace) se slučuje podle vedoucího zakázky (sloupec „vedoucí zak.“ na listu „činnosti“);
+   jméno vedoucího se na fakturu nepíše, místo něj se uvede tým (třetí část názvu zákazníka), při více týmech
+   všechny oddělené čárkou. Bez údaje o vedoucím (vložení ze schránky) se slučuje podle týmu. */
 function rowsToItems(rows, varianta){
   varianta = SLUCOVANI[varianta] ? varianta : SLUCOVANI_VYCHOZI;
   const out = [], groups = new Map();
   for(const r of rows){
     const depth = mergeDepth(r.zakaznik, varianta);
     if(depth > 0){
-      const parts = clientParts(r.zakaznik).slice(0, depth);
-      const key = parts.map(normPart).join(' / ');
+      const parts = clientParts(r.zakaznik);
+      const base = parts.slice(0, 2), team = depth >= 3 ? (parts[2] || '') : '';
+      const lead = depth >= 3 ? normPart(r.vedouci || '') : '';
+      const key = base.map(normPart).join(' / ') + (depth >= 3 ? ' / ' + (lead ? '@' + lead : normPart(team)) : '');
       let g = groups.get(key);
       if(!g){
-        g = { qty: 0, unit:'hod.', label: parts.join(' / '), price: null };
+        g = { qty: 0, unit:'hod.', label: '', price: null, _base: base.join(' / '), _teams: [] };
         groups.set(key, g); out.push(g);
       }
+      if(team && !g._teams.some(t => normPart(t) === normPart(team))) g._teams.push(team);
       g.qty += r.hodiny;
     } else {
       out.push({ qty: r.hodiny, unit:'hod.', label: buildLabel(r.cislo, r.zakaznik, r.zakazka), price: null });
     }
   }
-  for(const it of out) it.qty = Math.round(it.qty*100)/100;
+  for(const it of out){
+    it.qty = Math.round(it.qty*100)/100;
+    if(it._base !== undefined){
+      it.label = it._base + (it._teams.length ? ' / ' + it._teams.join(', ') : '');
+      delete it._base; delete it._teams;
+    }
+  }
   return out;
 }
 
@@ -607,6 +619,21 @@ function importXml(text){
     }
   }
   if(!rows) throw new Error('Nenašel se list „po zakázkách“.');
+  /* vedoucí zakázky: list „činnosti“ (řádky po dnech) má sloupce číslo + vedoucí zak. → mapa číslo → vedoucí */
+  const vedouci = {};
+  for(const ws of sheets){
+    if(ws === target) continue;
+    const r = readSheetRows(ws);
+    const hi = r.findIndex(c => c.some(v => /vedouc/i.test(stripDia(v||''))) && c.some(v => /cislo/i.test(stripDia(v||''))));
+    if(hi < 0) continue;
+    const hd = r[hi].map(v => stripDia(String(v||'')).toLowerCase());
+    const ic = hd.findIndex(h => h.includes('cislo')), iv = hd.findIndex(h => h.includes('vedouc'));
+    for(const c of r.slice(hi+1)){
+      const num = String((c && c[ic]) || '').trim(), who = String((c && c[iv]) || '').trim();
+      if(num && who && !vedouci[num]) vedouci[num] = who;
+    }
+    break;
+  }
   const hIdx = rows.findIndex(c => c.some(v => /zakázka/i.test(v||'')) && c.some(v => /(číslo|cislo)/i.test(stripDia(v||''))));
   if(hIdx < 0) throw new Error('V listu chybí hlavička (číslo / zákazník / zakázka).');
   const header = rows[hIdx].map(v => stripDia(String(v||'')).toLowerCase());
@@ -618,7 +645,8 @@ function importXml(text){
     if(!c || !c[iZakazka]) continue;
     const h = hoursFromText(c[iHodiny] ?? '');
     if(h === null || h <= 0) continue;
-    raw.push({ cislo: c[iCislo], zakaznik: c[iZakaznik], zakazka: c[iZakazka], hodiny: h });
+    const cislo = String(c[iCislo] || '').trim();
+    raw.push({ cislo, zakaznik: c[iZakaznik], zakazka: c[iZakazka], hodiny: h, vedouci: vedouci[cislo] || '' });
   }
   if(!raw.length) throw new Error('V listu se nenašly žádné řádky s odpracovanými hodinami.');
   return rowsToItems(raw, nastaveni.slucovani);

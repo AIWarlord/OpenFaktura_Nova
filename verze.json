@@ -1,7 +1,7 @@
 {
-  "verze": "1.3.0",
+  "verze": "1.3.1",
   "datum": "2026-09-07",
-  "popis": "Přepínač slučování zakázek při importu (jednotlivě / Albert po skupinách / všichni po skupinách).",
+  "popis": "Albert Komunikace se ve variantě Všichni po skupinách slučuje podle vedoucího zakázky z listu činnosti.",
   "soubory": [
     "server.js",
     "web/index.html",

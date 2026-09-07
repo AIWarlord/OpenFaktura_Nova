@@ -28,8 +28,13 @@ pamatuje). Název zákazníka v tabulce má tvar Klient / skupina / tým.
   Albert po skupinách          Albert se sloučí na „Albert / 2 - Komunikace“,
                                ostatní klienti jednotlivě
   Všichni po skupinách         každý klient se sloučí na „Klient / skupina“;
-                               Albert / 2 - Komunikace se dělí po týmech
-                               („Albert / 2 - Komunikace / SC kampane“);
+                               Albert / 2 - Komunikace se dělí podle vedoucího
+                               zakázky (sloupec „vedoucí zak.“ na listu
+                               „činnosti“); jméno se na fakturu nepíše, místo
+                               něj je tým („Albert / 2 - Komunikace / SC kampane“),
+                               při více týmech jednoho vedoucího všechny čárkou.
+                               Při vložení ze schránky (bez listu činnosti)
+                               se dělí podle týmu;
                                cokoli s New Business a cokoli od Line Art
                                zůstává jednotlivě po zakázkách
 Hodiny sloučených zakázek se sečtou. Změna přepínače se projeví až při
