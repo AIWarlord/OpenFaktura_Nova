@@ -1,7 +1,7 @@
 {
-  "verze": "1.2.1",
+  "verze": "1.3.0",
   "datum": "2026-09-07",
-  "popis": "Aktualizace jen na jednom místě (Nastavení); oprava stále viditelného pruhu.",
+  "popis": "Přepínač slučování zakázek při importu (jednotlivě / Albert po skupinách / všichni po skupinách).",
   "soubory": [
     "server.js",
     "web/index.html",

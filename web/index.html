@@ -293,6 +293,9 @@ input,select,textarea{font:inherit;color:var(--ink)}
     <!-- Položky -->
     <section class="sec">
       <h2>Položky</h2>
+      <div class="f" style="margin-bottom:10px"><label for="importMode">Slučování zakázek při importu</label>
+        <select id="importMode"></select>
+      </div>
       <div class="btnbar" style="margin-top:0">
         <button class="btn primary" id="btnFile">Nahrát tabulku (.xls)</button>
         <button class="btn" id="btnPasteToggle">Vložit z Excelu</button>
@@ -313,7 +316,7 @@ input,select,textarea{font:inherit;color:var(--ink)}
         <option value="měsíc"></option><option value="paušál"></option><option value="normostrana"></option>
       </datalist>
       <div class="totalbar"><span class="t" id="railTotalLabel">Celkem</span><span class="v" id="railTotal">0,00 Kč</span></div>
-      <p class="hint">Import čte list „po zakázkách“ a sloupec <b>doba účt.</b> Název položky se skládá automaticky (číslo_druh_KLIENT_zakázka) a lze ho přepsat. U klienta Albert se zakázky slučují podle skupiny (např. „Albert / 2 - Komunikace“) a hodiny se sečtou. U každé položky lze u <b>MJ</b> zvolit jednotku (hod., ks, m²…). Cena za MJ se u hodinových položek bere z hodinovky; přepsáním v řádku ji lze zafixovat.</p>
+      <p class="hint">Import čte list „po zakázkách“ a sloupec <b>doba účt.</b> Název položky se skládá automaticky (číslo_druh_KLIENT_zakázka) a lze ho přepsat. Podle zvoleného slučování se zakázky téže skupiny (např. „Albert / 2 - Komunikace“) spojí do jednoho řádku a hodiny se sečtou. U každé položky lze u <b>MJ</b> zvolit jednotku (hod., ks, m²…). Cena za MJ se u hodinových položek bere z hodinovky; přepsáním v řádku ji lze zafixovat.</p>
     </section>
 
     <!-- Odběratel -->
@@ -499,27 +502,42 @@ function vatAmount(){ return isVatPayer() ? Math.round(grandTotal() * state.vatR
 function grandTotalDue(){ return grandTotal() + vatAmount(); }
 
 /* ================= Label building ================= */
-/* Klienti, u kterých se zakázky slučují podle skupiny za prvním lomítkem
-   (např. „Albert / 2 - Komunikace / INSTORE“ → jeden řádek „Albert / 2 - Komunikace“ se součtem hodin).
+/* Varianty slučování zakázek při importu (volba v sekci Položky, ukládá se do nastavení).
+   Název zákazníka má tvar „Klient / skupina / tým“, např. „Albert / 2 - Komunikace / SC kampane“.
    Porovnává se bez diakritiky a bez ohledu na velikost písmen. */
-const SLOUCIT_KLIENTY = ['albert'];
+const SLUCOVANI = {
+  zadne:   'Jednotlivě po zakázkách',
+  albert:  'Albert po skupinách, ostatní jednotlivě',
+  skupiny: 'Všichni po skupinách (Albert Komunikace po týmech; New Business a Line Art jednotlivě)'
+};
+const SLUCOVANI_VYCHOZI = 'albert';
 
 function clientParts(zakaznik){ return String(zakaznik||'').split('/').map(s=>s.trim()).filter(Boolean); }
-function isMergedClient(zakaznik){
-  const c = stripDia(clientParts(zakaznik)[0]||'').toLowerCase();
-  return SLOUCIT_KLIENTY.includes(c);
+function normPart(s){ return stripDia(String(s||'')).toLowerCase().replace(/\s+/g,' ').trim(); }
+/* Kolik částí názvu zákazníka tvoří klíč pro sloučení: 0 = neslučovat (každá zakázka zvlášť),
+   2 = „Klient / skupina“, 3 = „Klient / skupina / tým“. */
+function mergeDepth(zakaznik, varianta){
+  const np = clientParts(zakaznik).map(normPart);
+  if(varianta === 'zadne') return 0;
+  if(varianta === 'albert') return np[0] === 'albert' ? 2 : 0;
+  /* varianta 'skupiny' */
+  if((np[0]||'').replace(/\s+/g,'').startsWith('lineart')) return 0;      /* Line Art (Group) — jednotlivě */
+  if(np.some(x => x.includes('new business'))) return 0;                  /* jakýkoli New Business — jednotlivě */
+  if(np[0] === 'albert' && (np[1]||'').includes('komunikace')) return 3;  /* Albert Komunikace — po týmech */
+  return 2;
 }
-/* Z pole surových řádků {cislo, zakaznik, zakazka, hodiny} vyrobí položky faktury.
-   Klienti ze SLOUCIT_KLIENTY se sloučí po skupinách, ostatní zůstávají po jednotlivých zakázkách. */
-function rowsToItems(rows){
+/* Z pole surových řádků {cislo, zakaznik, zakazka, hodiny} vyrobí položky faktury podle zvolené varianty. */
+function rowsToItems(rows, varianta){
+  varianta = SLUCOVANI[varianta] ? varianta : SLUCOVANI_VYCHOZI;
   const out = [], groups = new Map();
   for(const r of rows){
-    if(isMergedClient(r.zakaznik)){
-      const parts = clientParts(r.zakaznik);
-      const key = stripDia(parts.slice(0,2).join(' / ')).toLowerCase();
+    const depth = mergeDepth(r.zakaznik, varianta);
+    if(depth > 0){
+      const parts = clientParts(r.zakaznik).slice(0, depth);
+      const key = parts.map(normPart).join(' / ');
       let g = groups.get(key);
       if(!g){
-        g = { qty: 0, unit:'hod.', label: parts.slice(0,2).join(' / '), price: null };
+        g = { qty: 0, unit:'hod.', label: parts.join(' / '), price: null };
         groups.set(key, g); out.push(g);
       }
       g.qty += r.hodiny;
@@ -603,7 +621,7 @@ function importXml(text){
     raw.push({ cislo: c[iCislo], zakaznik: c[iZakaznik], zakazka: c[iZakazka], hodiny: h });
   }
   if(!raw.length) throw new Error('V listu se nenašly žádné řádky s odpracovanými hodinami.');
-  return rowsToItems(raw);
+  return rowsToItems(raw, nastaveni.slucovani);
 }
 function importPaste(text){
   const raw = [];
@@ -615,7 +633,7 @@ function importPaste(text){
     if(h === null || h <= 0) continue;
     raw.push({ cislo: c[0].trim(), zakaznik: c[1], zakazka: c[2], hodiny: h });
   }
-  return rowsToItems(raw);
+  return rowsToItems(raw, nastaveni.slucovani);
 }
 
 /* ================= QR Platba (SPD) ================= */
@@ -1122,6 +1140,13 @@ function flash(msg, isErr){
   flashTimer = setTimeout(() => { el.textContent = 'Data zůstávají jen u vás, ve složce OpenFaktura na tomto počítači.'; el.style.color = ''; }, 4000);
 }
 
+/* ================= Přepínač slučování ================= */
+(function(){
+  const sel = $('importMode');
+  for(const [k,v] of Object.entries(SLUCOVANI)){ const o = document.createElement('option'); o.value = k; o.textContent = v; sel.appendChild(o); }
+  sel.addEventListener('change', () => { nastaveni.slucovani = sel.value; persist(); flash('Slučování: ' + SLUCOVANI[sel.value] + '. Projeví se při dalším importu.'); });
+})();
+
 /* ================= Záložky panelu ================= */
 function showTab(name){
   for(const b of document.querySelectorAll('#tabs button')) b.classList.toggle('on', b.dataset.tab === name);
@@ -1225,6 +1250,8 @@ async function boot(){
     return;
   }
   nastaveni = b.nastaveni || nastaveni;
+  if(!SLUCOVANI[nastaveni.slucovani]) nastaveni.slucovani = SLUCOVANI_VYCHOZI;
+  $('importMode').value = nastaveni.slucovani;
   customers = b.odberatele || [];
   faktury = b.faktury || [];
   state = b.draft || freshState();
