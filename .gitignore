@@ -1,0 +1,10 @@
+# Prihlasovaci a fakturacni data uzivatele (server je vytvori sam)
+data/
+pdf-faktury/
+
+# Pribaleny Node runtime (binarky > 100 MB, GitHub je neprijme) - kopiruje se rucne
+runtime/
+
+# systemove soubory
+.DS_Store
+Thumbs.db

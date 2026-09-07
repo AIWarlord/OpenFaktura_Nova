@@ -1,0 +1,46 @@
+OpenFaktura — lokální fakturační program
+=========================================
+
+Celý program je v této jedné složce. Data i PDF se ukládají na disk
+(ve složkách data/ a pdf-faktury/), nezávisle na prohlížeči.
+
+
+JAK SPUSTIT
+-----------
+
+Windows:
+  Dvojklik na  OpenFaktura.bat
+  Otevře se okno a v prohlížeči naběhne aplikace (http://localhost:3000).
+  Okno nechte otevřené — zavřením okna aplikaci ukončíte.
+
+macOS:
+  Dvojklik na  OpenFaktura.command
+  Když se poprvé objeví bezpečnostní hláška „nelze otevřít, neznámý
+  vývojář", klikněte na soubor pravým tlačítkem → Otevřít → Otevřít.
+  (Nebo v Terminálu jednou spusťte: chmod +x OpenFaktura.command)
+
+
+ZÁLOHA
+------
+Zálohu uděláte prostým zkopírováním celé složky OpenFaktura
+(např. na flashku nebo do cloudu). Je v ní úplně všechno.
+
+
+SDÍLENÍ S KOLEGOU
+-----------------
+Zkopírujte kolegovi celou složku. Nemusí nic instalovat — runtime
+(Node) je přibalený pro Windows i Mac. Kolega dostane svoji vlastní
+kopii se svými daty; smazáním obsahu složky data/faktury/ a úpravou
+data/nastaveni.json (nebo přepsáním údajů v sekci Dodavatel) začne
+s čistým štítem.
+
+
+CO JE UVNITŘ
+------------
+  OpenFaktura.bat / .command   spouštěče
+  server.js                    lokální server (Node, bez závislostí)
+  web/                         aplikace (frontend)
+  lib/ (uvnitř web/)           pdfmake + fonty + QR
+  runtime/                     přibalený Node pro Windows a Mac
+  data/                        VAŠE DATA (faktury, odběratelé, nastavení)
+  pdf-faktury/                 hotová PDF
