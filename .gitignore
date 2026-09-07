@@ -12,3 +12,6 @@ Thumbs.db
 # docasne slozky aktualizace
 aktualizace-tmp/
 aktualizace-zaloha/
+
+# testovaci soubory (obsahuji jmena klientu)
+Test/
