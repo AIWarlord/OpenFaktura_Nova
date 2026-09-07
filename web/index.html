@@ -19,6 +19,7 @@
   font-size:15px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
 html,body{height:100%}
 body{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
@@ -67,13 +68,6 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .tabs button .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-left:5px;vertical-align:middle}
 .tab-panel[hidden]{display:none}
 
-/* pruh s nabídkou nové verze */
-.updbar{
-  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-  padding:10px 22px;background:#EEF1FC;border-bottom:1px solid #C9D1F5;font-size:.78rem;line-height:1.4;
-}
-.updbar .txt{flex:1;min-width:180px}
-.updbar b{color:var(--accent)}
 .sec{border-bottom:1px solid var(--line);padding:16px 22px 20px}
 .sec h2{
   font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;
@@ -273,12 +267,6 @@ input,select,textarea{font:inherit;color:var(--ink)}
       <button type="button" data-tab="prehled">Přehled</button>
       <button type="button" data-tab="nastaveni" id="tabBtnNastaveni">Nastavení</button>
     </nav>
-
-    <div class="updbar" id="updBanner" hidden>
-      <span class="txt" id="updBannerText">Je k dispozici nová verze.</span>
-      <button class="btn primary small" id="btnUpdBannerApply">Aktualizovat</button>
-      <button class="btn small" id="btnUpdBannerLater">Později</button>
-    </div>
 
     <!-- ===== Záložka: Faktura ===== -->
     <div class="tab-panel" data-panel="faktura">
@@ -1146,18 +1134,14 @@ $('tabs').addEventListener('click', e => { const b = e.target.closest('button[da
 /* ================= Verze a aktualizace ================= */
 let verze = '';
 let dostupnaAktualizace = null;   /* info z GET /api/aktualizace, když je novější verze */
-function showUpdBanner(){
+function showTabDot(){
   const d = dostupnaAktualizace;
-  let later = ''; try { later = sessionStorage.getItem('of.updLater') || ''; } catch(e){}
-  const show = !!d && later !== d.dostupna;
-  $('updBanner').hidden = !show;
-  if(show) $('updBannerText').innerHTML = 'Je k dispozici nová verze <b>' + esc(d.dostupna) + '</b>' + (d.popis ? ': ' + esc(d.popis) : '') + '. Vaše data zůstanou zachována.';
   const tb = $('tabBtnNastaveni'); const dot = tb.querySelector('.dot');
   if(d && !dot) tb.insertAdjacentHTML('beforeend', '<span class="dot" title="Je k dispozici nová verze"></span>');
   if(!d && dot) dot.remove();
 }
 function showVerze(){
-  showUpdBanner();
+  showTabDot();
   const b = $('verBadge');
   if(dostupnaAktualizace){
     b.textContent = 'v' + verze + ' → ' + dostupnaAktualizace.dostupna;
@@ -1176,6 +1160,7 @@ async function checkUpdate(silent){
     if(r.novejsi){
       dostupnaAktualizace = r;
       $('btnUpdApply').hidden = false;
+      if(silent) flash('Je k dispozici nová verze ' + r.dostupna + '. Najdete ji v Nastavení → Aktualizace.');
       updNote('Je k dispozici verze ' + r.dostupna + (r.datum ? ' (' + r.datum + ')' : '') + (r.popis ? ': ' + r.popis : '') + '. Máte verzi ' + r.aktualni + '.');
     } else {
       dostupnaAktualizace = null;
@@ -1215,11 +1200,7 @@ async function applyUpdate(){
 $('btnUpdCheck').addEventListener('click', () => checkUpdate(false));
 $('btnUpdApply').addEventListener('click', applyUpdate);
 $('verBadge').addEventListener('click', () => { showTab('nastaveni'); $('secUpdate').scrollIntoView({ behavior:'smooth' }); });
-$('btnUpdBannerApply').addEventListener('click', () => { showTab('nastaveni'); $('updBanner').hidden = true; applyUpdate(); });
-$('btnUpdBannerLater').addEventListener('click', () => {
-  $('updBanner').hidden = true;
-  try { sessionStorage.setItem('of.updLater', dostupnaAktualizace ? dostupnaAktualizace.dostupna : ''); } catch(e){}
-});
+
 
 /* ================= Preview scaling ================= */
 function scaleSheet(){

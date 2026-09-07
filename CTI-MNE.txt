@@ -24,8 +24,9 @@ VERZE A AKTUALIZACE
 -------------------
 Levý panel má tři záložky: Faktura (číslo, položky, odběratel),
 Přehled (archiv faktur a statistiky) a Nastavení (dodavatel, DPH,
-aktualizace). Když program najde novější verzi, nahoře v panelu se objeví
-pruh s tlačítky Aktualizovat / Později.
+aktualizace). Když program najde novější verzi, zvýrazní se odznak verze
+u názvu, na záložce Nastavení se objeví tečka a po startu krátká hláška.
+Samotné tlačítko Aktualizovat je jen v Nastavení → Aktualizace.
 
 Číslo verze vidíte vlevo nahoře u názvu (např. v1.1.0) a v souboru
 verze.json. Značení je číslo.číslo.číslo:

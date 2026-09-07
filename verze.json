@@ -1,7 +1,7 @@
 {
-  "verze": "1.2.0",
+  "verze": "1.2.1",
   "datum": "2026-09-07",
-  "popis": "Záložky Faktura / Přehled / Nastavení, širší panel, nabídka nové verze po startu.",
+  "popis": "Aktualizace jen na jednom místě (Nastavení); oprava stále viditelného pruhu.",
   "soubory": [
     "server.js",
     "web/index.html",
