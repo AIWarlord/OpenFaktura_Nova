@@ -368,7 +368,7 @@ input,select,textarea{font:inherit;color:var(--ink)}
   <!-- ============ STAGE / PREVIEW ============ -->
   <main class="stage">
     <div class="stagebar">
-      <span class="note" id="saveNote">Data se ukládají na disk u serveru.</span>
+      <span class="note" id="saveNote">Data zůstávají jen u vás, ve složce OpenFaktura na tomto počítači.</span>
       <span style="display:flex;gap:8px">
         <button class="btn" id="btnArchive">Uložit fakturu</button>
         <button class="btn" id="btnPrint">Tisk</button>
@@ -1088,7 +1088,7 @@ function flash(msg, isErr){
   el.textContent = msg;
   el.style.color = isErr ? 'var(--warn)' : 'var(--ok)';
   clearTimeout(flashTimer);
-  flashTimer = setTimeout(() => { el.textContent = 'Data se ukládají na disk u serveru.'; el.style.color = ''; }, 4000);
+  flashTimer = setTimeout(() => { el.textContent = 'Data zůstávají jen u vás, ve složce OpenFaktura na tomto počítači.'; el.style.color = ''; }, 4000);
 }
 
 /* ================= Verze a aktualizace ================= */

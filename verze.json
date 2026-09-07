@@ -1,7 +1,7 @@
 {
-  "verze": "1.1.0",
+  "verze": "1.1.1",
   "datum": "2026-09-07",
-  "popis": "Sloučení zakázek Albert podle skupiny při importu; zobrazení verze a aktualizace z internetu.",
+  "popis": "Srozumitelnější hláška o ukládání dat (data zůstávají jen u vás).",
   "soubory": [
     "server.js",
     "web/index.html",
