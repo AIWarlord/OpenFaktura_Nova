@@ -22,13 +22,18 @@ macOS:
 
 VERZE A AKTUALIZACE
 -------------------
+Levý panel má tři záložky: Faktura (číslo, položky, odběratel),
+Přehled (archiv faktur a statistiky) a Nastavení (dodavatel, DPH,
+aktualizace). Když program najde novější verzi, nahoře v panelu se objeví
+pruh s tlačítky Aktualizovat / Později.
+
 Číslo verze vidíte vlevo nahoře u názvu (např. v1.1.0) a v souboru
 verze.json. Značení je číslo.číslo.číslo:
   1.x.x  velká změna (nový vzhled, nový formát dat)
   x.1.x  nová funkce (např. slučování zakázek)
   x.x.1  drobná oprava
 
-V sekci 6 „Aktualizace“ program zkontroluje, zda je na internetu novější
+V záložce Nastavení → Aktualizace program zkontroluje, zda je na internetu novější
 verze, a tlačítkem Aktualizovat ji stáhne a sám se restartuje.
 Přepisují se JEN programové soubory uvedené ve verze.json (server.js,
 web/…). Složky data/ a pdf-faktury/ s vašimi fakturami, odběrateli

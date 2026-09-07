@@ -1,7 +1,7 @@
 {
-  "verze": "1.1.1",
+  "verze": "1.2.0",
   "datum": "2026-09-07",
-  "popis": "Srozumitelnější hláška o ukládání dat (data zůstávají jen u vás).",
+  "popis": "Záložky Faktura / Přehled / Nastavení, širší panel, nabídka nové verze po startu.",
   "soubory": [
     "server.js",
     "web/index.html",

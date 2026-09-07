@@ -15,7 +15,7 @@
   --paper:#FFFFFF;
   --ok:#1E7B4D;
   --warn:#B23A2B;
-  --rail-w:430px;
+  --rail-w:500px;
   font-size:15px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -55,6 +55,25 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .brand h1 span{color:var(--accent)}
 .brand .ver{font-size:.72rem;color:var(--ink-soft);white-space:nowrap}
 .brand .ver.upd{color:var(--accent);font-weight:600;cursor:pointer}
+
+/* záložky panelu */
+.tabs{display:flex;border-bottom:1px solid var(--line);background:#FAFAF9;position:sticky;top:0;z-index:2}
+.tabs button{
+  flex:1;border:0;background:none;padding:11px 6px 9px;font-size:.8rem;font-weight:600;color:var(--ink-soft);
+  border-bottom:2px solid transparent;margin-bottom:-1px;
+}
+.tabs button:hover{color:var(--ink)}
+.tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+.tabs button .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-left:5px;vertical-align:middle}
+.tab-panel[hidden]{display:none}
+
+/* pruh s nabídkou nové verze */
+.updbar{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:10px 22px;background:#EEF1FC;border-bottom:1px solid #C9D1F5;font-size:.78rem;line-height:1.4;
+}
+.updbar .txt{flex:1;min-width:180px}
+.updbar b{color:var(--accent)}
 .sec{border-bottom:1px solid var(--line);padding:16px 22px 20px}
 .sec h2{
   font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;
@@ -249,9 +268,24 @@ input,select,textarea{font:inherit;color:var(--ink)}
       <span class="ver" id="verBadge" title="Verze programu · data na disku">v…</span>
     </div>
 
+    <nav class="tabs" id="tabs">
+      <button type="button" data-tab="faktura" class="on">Faktura</button>
+      <button type="button" data-tab="prehled">Přehled</button>
+      <button type="button" data-tab="nastaveni" id="tabBtnNastaveni">Nastavení</button>
+    </nav>
+
+    <div class="updbar" id="updBanner" hidden>
+      <span class="txt" id="updBannerText">Je k dispozici nová verze.</span>
+      <button class="btn primary small" id="btnUpdBannerApply">Aktualizovat</button>
+      <button class="btn small" id="btnUpdBannerLater">Později</button>
+    </div>
+
+    <!-- ===== Záložka: Faktura ===== -->
+    <div class="tab-panel" data-panel="faktura">
+
     <!-- Faktura -->
     <section class="sec">
-      <h2><span class="n">1</span>Faktura</h2>
+      <h2>Faktura</h2>
       <div class="grid2">
         <div class="f"><label for="invNumber">Číslo faktury</label><input id="invNumber" type="text"></div>
         <div class="f"><label for="invVs">Variabilní symbol</label><input id="invVs" type="text" inputmode="numeric"></div>
@@ -260,7 +294,7 @@ input,select,textarea{font:inherit;color:var(--ink)}
         <div class="f"><label for="invPay">Způsob platby</label>
           <select id="invPay"><option>Převodem</option><option>Hotově</option></select>
         </div>
-        <div class="f"><label for="invRate">Hodinovka pro tento měsíc (Kč/hod.)</label><input id="invRate" type="number" min="0" step="10"></div>
+        <div class="f"><label for="invRate">Hodinovka pro tuto fakturu (Kč/hod.)</label><input id="invRate" type="number" min="0" step="10"></div>
         <div class="f full"><label for="invIntro">Úvodní text</label><input id="invIntro" type="text"></div>
       </div>
       <div class="btnbar">
@@ -270,7 +304,7 @@ input,select,textarea{font:inherit;color:var(--ink)}
 
     <!-- Položky -->
     <section class="sec">
-      <h2><span class="n">2</span>Položky</h2>
+      <h2>Položky</h2>
       <div class="btnbar" style="margin-top:0">
         <button class="btn primary" id="btnFile">Nahrát tabulku (.xls)</button>
         <button class="btn" id="btnPasteToggle">Vložit z Excelu</button>
@@ -296,7 +330,7 @@ input,select,textarea{font:inherit;color:var(--ink)}
 
     <!-- Odběratel -->
     <section class="sec">
-      <h2><span class="n">3</span>Odběratel</h2>
+      <h2>Odběratel</h2>
       <div class="rowline">
         <div class="f"><label for="custSelect">Uložení odběratelé</label>
           <select id="custSelect"></select>
@@ -313,29 +347,13 @@ input,select,textarea{font:inherit;color:var(--ink)}
       </div>
     </section>
 
-    <!-- Dodavatel -->
-    <section class="sec">
-      <h2><span class="n">4</span>Dodavatel</h2>
-      <div class="grid2">
-        <div class="f full"><label for="sName">Jméno / název</label><input id="sName" type="text"></div>
-        <div class="f full"><label for="sStreet">Ulice a č. p.</label><input id="sStreet" type="text"></div>
-        <div class="f full"><label for="sCity">PSČ a město</label><input id="sCity" type="text"></div>
-        <div class="f"><label for="sIco">IČO</label><input id="sIco" type="text"></div>
-        <div class="f"><label for="sDic">DIČ (nepovinné)</label><input id="sDic" type="text" placeholder="—"></div>
-        <div class="f"><label for="sAccount">Bankovní účet</label><input id="sAccount" type="text" placeholder="1481807028/3030"></div>
-        <div class="f chk-holder">
-          <label>&nbsp;</label>
-          <label class="chk"><input type="checkbox" id="sVat"> Neplátce DPH</label>
-        </div>
-        <div class="f" id="vatRateField" style="display:none"><label for="sVatRate">Sazba DPH (%)</label><input id="sVatRate" type="number" min="0" step="1"></div>
-        <div class="f full"><label for="sNote">Poznámka v patičce</label><input id="sNote" type="text"></div>
-      </div>
-      <p class="hint">IBAN pro QR platbu se z čísla účtu dopočítá automaticky: <b id="ibanPreview">—</b></p>
-    </section>
+    </div>
 
+    <!-- ===== Záložka: Přehled ===== -->
+    <div class="tab-panel" data-panel="prehled" hidden>
     <!-- Faktury a statistiky -->
     <section class="sec">
-      <h2><span class="n">5</span>Faktury a statistiky</h2>
+      <h2>Faktury a statistiky</h2>
       <div class="stats">
         <div class="yrline">
           <span style="font-size:.78rem;font-weight:700">Fakturováno v roce</span>
@@ -353,9 +371,33 @@ input,select,textarea{font:inherit;color:var(--ink)}
       <p class="hint">Kliknutím na řádek fakturu otevřete. Na štítku přepnete Uhrazeno / Čeká. Všechna data leží v této složce (<b>data/</b>) — záloha = zkopírovat celou složku OpenFaktura.</p>
     </section>
 
+    </div>
+
+    <!-- ===== Záložka: Nastavení ===== -->
+    <div class="tab-panel" data-panel="nastaveni" hidden>
+    <!-- Dodavatel -->
+    <section class="sec">
+      <h2>Dodavatel</h2>
+      <div class="grid2">
+        <div class="f full"><label for="sName">Jméno / název</label><input id="sName" type="text"></div>
+        <div class="f full"><label for="sStreet">Ulice a č. p.</label><input id="sStreet" type="text"></div>
+        <div class="f full"><label for="sCity">PSČ a město</label><input id="sCity" type="text"></div>
+        <div class="f"><label for="sIco">IČO</label><input id="sIco" type="text"></div>
+        <div class="f"><label for="sDic">DIČ (nepovinné)</label><input id="sDic" type="text" placeholder="—"></div>
+        <div class="f"><label for="sAccount">Bankovní účet</label><input id="sAccount" type="text" placeholder="1481807028/3030"></div>
+        <div class="f chk-holder">
+          <label>&nbsp;</label>
+          <label class="chk"><input type="checkbox" id="sVat"> Neplátce DPH</label>
+        </div>
+        <div class="f" id="vatRateField" style="display:none"><label for="sVatRate">Sazba DPH (%)</label><input id="sVatRate" type="number" min="0" step="1"></div>
+        <div class="f full"><label for="sNote">Poznámka v patičce</label><input id="sNote" type="text"></div>
+      </div>
+      <p class="hint">Údaje dodavatele, DPH a poznámka se tisknou na každou fakturu a zůstávají uložené pro příští faktury. IBAN pro QR platbu se z čísla účtu dopočítá automaticky: <b id="ibanPreview">—</b></p>
+    </section>
+
     <!-- Aktualizace -->
     <section class="sec" id="secUpdate">
-      <h2><span class="n">6</span>Aktualizace</h2>
+      <h2>Aktualizace</h2>
       <p class="hint" id="updNote" style="margin-top:0">Verze programu se načítá…</p>
       <div class="btnbar">
         <button class="btn small" id="btnUpdCheck">Zkontrolovat aktualizace</button>
@@ -363,6 +405,7 @@ input,select,textarea{font:inherit;color:var(--ink)}
       </div>
       <p class="hint">Aktualizace stáhne jen programové soubory. Vaše faktury, odběratelé a nastavení (<b>data/</b>, <b>pdf-faktury/</b>) zůstávají netknuté. Po aktualizaci se program sám restartuje.</p>
     </section>
+    </div>
   </aside>
 
   <!-- ============ STAGE / PREVIEW ============ -->
@@ -892,7 +935,7 @@ async function openFaktura(number){
     const rec = await api.get('/api/faktury/' + encodeURIComponent(number));
     state = JSON.parse(JSON.stringify(rec.snapshot));
     if(state.vatRate === undefined) state.vatRate = 21;
-    fillForm(); refresh();
+    fillForm(); refresh(); showTab('faktura');
     flash('Otevřena faktura ' + number + '.');
   }catch(e){ serverDown(); }
 }
@@ -1091,10 +1134,30 @@ function flash(msg, isErr){
   flashTimer = setTimeout(() => { el.textContent = 'Data zůstávají jen u vás, ve složce OpenFaktura na tomto počítači.'; el.style.color = ''; }, 4000);
 }
 
+/* ================= Záložky panelu ================= */
+function showTab(name){
+  for(const b of document.querySelectorAll('#tabs button')) b.classList.toggle('on', b.dataset.tab === name);
+  for(const p of document.querySelectorAll('.tab-panel')) p.hidden = p.dataset.panel !== name;
+  try { localStorage.setItem('of.tab', name); } catch(e){}
+}
+$('tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if(b) showTab(b.dataset.tab); });
+(function(){ let t = 'faktura'; try { t = localStorage.getItem('of.tab') || 'faktura'; } catch(e){} if(!document.querySelector('.tab-panel[data-panel="'+t+'"]')) t = 'faktura'; showTab(t); })();
+
 /* ================= Verze a aktualizace ================= */
 let verze = '';
 let dostupnaAktualizace = null;   /* info z GET /api/aktualizace, když je novější verze */
+function showUpdBanner(){
+  const d = dostupnaAktualizace;
+  let later = ''; try { later = sessionStorage.getItem('of.updLater') || ''; } catch(e){}
+  const show = !!d && later !== d.dostupna;
+  $('updBanner').hidden = !show;
+  if(show) $('updBannerText').innerHTML = 'Je k dispozici nová verze <b>' + esc(d.dostupna) + '</b>' + (d.popis ? ': ' + esc(d.popis) : '') + '. Vaše data zůstanou zachována.';
+  const tb = $('tabBtnNastaveni'); const dot = tb.querySelector('.dot');
+  if(d && !dot) tb.insertAdjacentHTML('beforeend', '<span class="dot" title="Je k dispozici nová verze"></span>');
+  if(!d && dot) dot.remove();
+}
 function showVerze(){
+  showUpdBanner();
   const b = $('verBadge');
   if(dostupnaAktualizace){
     b.textContent = 'v' + verze + ' → ' + dostupnaAktualizace.dostupna;
@@ -1151,7 +1214,12 @@ async function applyUpdate(){
 }
 $('btnUpdCheck').addEventListener('click', () => checkUpdate(false));
 $('btnUpdApply').addEventListener('click', applyUpdate);
-$('verBadge').addEventListener('click', () => { if(dostupnaAktualizace) $('secUpdate').scrollIntoView({ behavior:'smooth' }); });
+$('verBadge').addEventListener('click', () => { showTab('nastaveni'); $('secUpdate').scrollIntoView({ behavior:'smooth' }); });
+$('btnUpdBannerApply').addEventListener('click', () => { showTab('nastaveni'); $('updBanner').hidden = true; applyUpdate(); });
+$('btnUpdBannerLater').addEventListener('click', () => {
+  $('updBanner').hidden = true;
+  try { sessionStorage.setItem('of.updLater', dostupnaAktualizace ? dostupnaAktualizace.dostupna : ''); } catch(e){}
+});
 
 /* ================= Preview scaling ================= */
 function scaleSheet(){
