@@ -1,5 +1,11 @@
-OpenFaktura — lokální fakturační program
-=========================================
+Fakturator — lokální fakturační program
+========================================
+(dříve OpenFaktura)
+
+Program se jmenuje Fakturator. Složka programu, spouštěče OpenFaktura.bat /
+OpenFaktura.command a adresa aktualizací na GitHubu si původní název
+OpenFaktura ponechávají — aktualizace je nepřepisuje a zástupci na ploše
+dál fungují. Nic přejmenovávat nemusíte.
 
 Celý program je v této jedné složce. Data i PDF se ukládají na disk
 (ve složkách data/ a pdf-faktury/), nezávisle na prohlížeči.
@@ -99,7 +105,7 @@ aby starší data po aktualizaci fungovala.
 
 ZÁLOHA
 ------
-Zálohu uděláte prostým zkopírováním celé složky OpenFaktura
+Zálohu uděláte prostým zkopírováním celé složky programu (OpenFaktura)
 (např. na flashku nebo do cloudu). Je v ní úplně všechno.
 
 

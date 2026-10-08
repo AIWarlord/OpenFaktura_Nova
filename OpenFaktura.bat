@@ -1,11 +1,11 @@
 @echo off
-title OpenFaktura
+title Fakturator
 cd /d "%~dp0"
 :start
-echo Spoustim OpenFaktura...
+echo Spoustim Fakturator...
 "%~dp0runtime\win\node.exe" "%~dp0server.js"
 rem navratovy kod 75 = server se po aktualizaci chce restartovat
 if %errorlevel%==75 goto start
 echo.
-echo OpenFaktura byla ukoncena. Toto okno muzete zavrit.
+echo Fakturator byl ukoncen. Toto okno muzete zavrit.
 pause >nul

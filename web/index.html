@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OpenFaktura</title>
+<title>Fakturator</title>
 <style>
 :root{
   --desk:#EEF0EE;
@@ -268,7 +268,7 @@ input,select,textarea{font:inherit;color:var(--ink)}
   <!-- ============ CONTROL RAIL ============ -->
   <aside class="rail">
     <div class="brand">
-      <h1>Open<span>Faktura</span></h1>
+      <h1>Faktur<span>ator</span></h1>
       <span class="ver" id="verBadge" title="Verze programu · data na disku">v…</span>
     </div>
 
@@ -372,7 +372,7 @@ input,select,textarea{font:inherit;color:var(--ink)}
         <div class="barlbls"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>11</span><span>12</span></div>
       </div>
       <div class="arch" id="archBox" style="margin-top:12px"></div>
-      <p class="hint">Kliknutím na řádek fakturu otevřete. Na štítku přepnete Uhrazeno / Čeká. Všechna data leží v této složce (<b>data/</b>) — záloha = zkopírovat celou složku OpenFaktura.</p>
+      <p class="hint">Kliknutím na řádek fakturu otevřete. Na štítku přepnete Uhrazeno / Čeká. Všechna data leží v této složce (<b>data/</b>) — záloha = zkopírovat celou složku programu.</p>
     </section>
 
     </div>
@@ -419,6 +419,7 @@ input,select,textarea{font:inherit;color:var(--ink)}
     <!-- Aktualizace -->
     <section class="sec" id="secUpdate">
       <h2>Aktualizace</h2>
+      <p class="hint" style="margin-top:0"><b>Fakturator</b> je dřívější OpenFaktura — složka programu a spouštěče <b>OpenFaktura.bat</b> / <b>OpenFaktura.command</b> si původní název ponechávají, aby fungovaly aktualizace i zástupci.</p>
       <p class="hint" id="updNote" style="margin-top:0">Verze programu se načítá…</p>
       <div class="btnbar">
         <button class="btn small" id="btnUpdCheck">Zkontrolovat aktualizace</button>
@@ -432,7 +433,7 @@ input,select,textarea{font:inherit;color:var(--ink)}
   <!-- ============ STAGE / PREVIEW ============ -->
   <main class="stage">
     <div class="stagebar">
-      <span class="note" id="saveNote">Data zůstávají jen u vás, ve složce OpenFaktura na tomto počítači.</span>
+      <span class="note" id="saveNote">Data zůstávají jen u vás, ve složce programu na tomto počítači.</span>
       <span style="display:flex;gap:8px">
         <button class="btn" id="btnArchive">Uložit fakturu</button>
         <button class="btn" id="btnPrint">Tisk</button>
@@ -449,7 +450,7 @@ input,select,textarea{font:inherit;color:var(--ink)}
 
 <div class="modal" id="updModal" hidden role="dialog" aria-modal="true" aria-labelledby="updModalTitle">
   <div class="box">
-    <h2 id="updModalTitle">Je k dispozici nová verze OpenFaktury</h2>
+    <h2 id="updModalTitle">Je k dispozici nová verze Fakturatoru</h2>
     <p class="ver-line" id="updModalVer"></p>
     <p class="popis" id="updModalPopis"></p>
     <p class="note" id="updModalNote">Doporučujeme aktualizovat hned, než začnete pracovat. Vaše faktury a nastavení zůstanou beze změny.</p>
@@ -517,7 +518,7 @@ function persist(){
   clearTimeout(nastTimer);
   nastTimer = setTimeout(() => { api.put('/api/nastaveni', nastaveni).catch(()=>{}); }, 600);
 }
-function serverDown(){ flash('Spojení se serverem selhalo — běží OpenFaktura (okno serveru)?', true); }
+function serverDown(){ flash('Spojení se serverem selhalo — běží Fakturator (černé okno serveru)?', true); }
 
 /* ================= Helpers ================= */
 const $ = id => document.getElementById(id);
@@ -1241,7 +1242,7 @@ function flash(msg, isErr){
   el.textContent = msg;
   el.style.color = isErr ? 'var(--warn)' : 'var(--ok)';
   clearTimeout(flashTimer);
-  flashTimer = setTimeout(() => { el.textContent = 'Data zůstávají jen u vás, ve složce OpenFaktura na tomto počítači.'; el.style.color = ''; }, 4000);
+  flashTimer = setTimeout(() => { el.textContent = 'Data zůstávají jen u vás, ve složce programu na tomto počítači.'; el.style.color = ''; }, 4000);
 }
 
 /* ================= Přepínač slučování ================= */
@@ -1444,7 +1445,7 @@ async function boot(){
   try{ b = await api.get('/api/bootstrap'); }
   catch(e){
     document.body.innerHTML = '<div style="max-width:560px;margin:14vh auto;padding:28px;font-family:sans-serif;line-height:1.6">'
-      + '<h1 style="font-size:1.3rem;margin-bottom:10px">OpenFaktura se nespojila se serverem</h1>'
+      + '<h1 style="font-size:1.3rem;margin-bottom:10px">Fakturator se nespojil se serverem</h1>'
       + '<p style="color:#5B6169">Zdá se, že server neběží. Spusťte aplikaci přes <b>OpenFaktura.bat</b> (Windows) nebo <b>OpenFaktura.command</b> (Mac) a otevřete <b>http://localhost:3000</b>.</p></div>';
     return;
   }

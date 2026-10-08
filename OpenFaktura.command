@@ -1,5 +1,5 @@
 #!/bin/bash
-# OpenFaktura — spouštěč pro macOS
+# Fakturator (dříve OpenFaktura) — spouštěč pro macOS
 cd "$(dirname "$0")"
 
 ARCH="$(uname -m)"
@@ -21,11 +21,11 @@ fi
 
 # návratový kód 75 = server se po aktualizaci chce restartovat
 while true; do
-  echo "Spouštím OpenFaktura…"
+  echo "Spouštím Fakturator…"
   "$NODE" server.js
   [ $? -eq 75 ] || break
 done
 
 echo ""
-echo "OpenFaktura byla ukončena. Toto okno můžeš zavřít."
+echo "Fakturator byl ukončen. Toto okno můžeš zavřít."
 read -r -p "" _

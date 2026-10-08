@@ -1,6 +1,6 @@
 'use strict';
 /* ===================================================================
-   OpenFaktura — lokální server (Node, bez externích závislostí)
+   Fakturator (dříve OpenFaktura) — lokální server (Node, bez externích závislostí)
    Servíruje frontend z web/ a ukládá data jako JSON soubory na disk,
    nezávisle na prohlížeči. PDF přijímá od frontendu a zapisuje do
    složky pdf-faktury/. Spouští se přes OpenFaktura.bat / .command.
@@ -391,7 +391,7 @@ function start(port, triesLeft){
   });
   server.listen(port, '127.0.0.1', () => {
     const url = 'http://localhost:' + port + '/';
-    console.log('\n  OpenFaktura ' + readVerze().verze + ' běží na  ' + url);
+    console.log('\n  Fakturator ' + readVerze().verze + ' běží na  ' + url);
     console.log('  Data:  ' + DATA_DIR);
     console.log('  PDF:   ' + PDF_DIR);
     console.log('\n  Toto okno nechte otevřené. Zavřením okna aplikaci ukončíte.\n');

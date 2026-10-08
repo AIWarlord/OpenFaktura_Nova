@@ -1,7 +1,7 @@
 {
-  "verze": "1.5.2",
+  "verze": "1.6.0",
   "datum": "2026-10-08",
-  "popis": "Zkušební vydání pro ověření upozornění na novou verzi. Žádná změna ve funkcích.",
+  "popis": "Program se nově jmenuje Fakturator (dříve OpenFaktura). Složka, spouštěče OpenFaktura.bat / .command a adresa aktualizací zůstávají beze změny.",
   "soubory": [
     "server.js",
     "web/index.html",
