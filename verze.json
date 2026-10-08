@@ -1,7 +1,7 @@
 {
-  "verze": "1.4.0",
+  "verze": "1.4.1",
   "datum": "2026-10-08",
-  "popis": "Na faktuře lze skrýt množství a cenu za MJ (Nastavení → Dodavatel), výchozí zapnuto; faktura pak uvádí jen položku a částku.",
+  "popis": "Minuty z výkazu se už nezaokrouhlují (160:00 h = 160 h, zobrazení 1:04), dlouhé názvy položek se v PDF zalamují, IBAN a VS v PDF na jednom řádku.",
   "soubory": [
     "server.js",
     "web/index.html",

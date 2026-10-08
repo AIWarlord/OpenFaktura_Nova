@@ -389,6 +389,18 @@ input,select,textarea{font:inherit;color:var(--ink)}
       <p class="hint">Údaje dodavatele, DPH a poznámka se tisknou na každou fakturu a zůstávají uložené pro příští faktury. IBAN pro QR platbu se z čísla účtu dopočítá automaticky: <b id="ibanPreview">—</b></p>
     </section>
 
+    <!-- Pronájem HUB -->
+    <section class="sec" id="secHub">
+      <h2>Pronájem</h2>
+      <div class="grid2">
+        <div class="f full chk-holder">
+          <label class="chk"><input type="checkbox" id="hubOn"> Platím si pronájem – HUB</label>
+        </div>
+        <div class="f" id="hubCastkaField" style="display:none"><label for="hubCastka">Výše pronájmu (Kč)</label><input id="hubCastka" type="number" min="0" step="1" placeholder="0" inputmode="decimal"></div>
+      </div>
+      <p class="hint">Částka, kterou máte za pronájem HUBu domluvenou. Každý ji může mít jinou, proto se zadává zde.</p>
+    </section>
+
     <!-- Aktualizace -->
     <section class="sec" id="secUpdate">
       <h2>Aktualizace</h2>
@@ -485,6 +497,16 @@ const $ = id => document.getElementById(id);
 function esc(s){ return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function fmtMoney(n){ return new Intl.NumberFormat('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n) + ' Kč'; }
 function fmtQty(n){ return new Intl.NumberFormat('cs-CZ',{maximumFractionDigits:2}).format(n); }
+/* Množství položky: hodiny, které nejdou přesně zapsat na dvě desetinná místa (např. 1:04 = 1,0667 h),
+   se zobrazí jako h:mm, ostatní (1,5 / 2,25 / 96) jako číslo. Do pole množství lze psát obojí. */
+function fmtHours(it){
+  const q = +it.qty || 0;
+  if(it.unit === 'hod.' && Math.abs(q*100 - Math.round(q*100)) > 1e-6){
+    const tot = Math.round(q*60);
+    return Math.floor(tot/60) + ':' + String(tot % 60).padStart(2,'0');
+  }
+  return fmtQty(q);
+}
 function fmtDate(iso){ if(!iso) return ''; const [y,m,d] = iso.split('-'); return `${+d}. ${m}. ${y}`; }
 function stripDia(s){ return String(s).normalize('NFD').replace(/[̀-ͯ]/g,''); }
 function vsFromNumber(num){ return String(num).replace(/\D/g,''); }
@@ -558,7 +580,9 @@ function rowsToItems(rows, varianta){
     }
   }
   for(const it of out){
-    it.qty = Math.round(it.qty*100)/100;
+    /* zaokrouhlit na celé minuty, ne na setiny hodiny — jinak se u zápisů typu 1:04 ztrácí
+       minuty a součet faktury nesedí s výkazem (160:00 h vycházelo jako 159,99 h) */
+    it.qty = Math.round(it.qty*60)/60;
     if(it._base !== undefined){
       it.label = it._base + (it._teams.length ? ' / ' + it._teams.join(', ') : '');
       delete it._base; delete it._teams;
@@ -715,7 +739,7 @@ function renderInvoice(){
   const hq = hideQty();
   const rows = state.items.map(it => `
     <tr>
-      ${hq ? '' : `<td class="qty">${fmtQty(it.qty)} ${esc(it.unit)}</td>`}
+      ${hq ? '' : `<td class="qty">${fmtHours(it)} ${esc(it.unit)}</td>`}
       <td class="it">${esc(it.label).replace(/_/g,'_<wbr>')}</td>
       ${hq ? '' : `<td class="r">${fmtMoney(effPrice(it))}</td>`}
       <td class="r">${fmtMoney(itemTotal(it))}</td>
@@ -793,7 +817,7 @@ function renderItems(){
   } else {
     box.innerHTML = state.items.map((it,i)=>`
       <div class="item" data-i="${i}">
-        <input class="qty" data-f="qty" value="${fmtQty(it.qty)}" title="Množství" inputmode="decimal">
+        <input class="qty" data-f="qty" value="${fmtHours(it)}" title="Množství (hodiny lze psát i jako 1:04)" inputmode="decimal">
         <input class="lbl" data-f="label" value="${esc(it.label)}" title="Název položky">
         <input class="price" data-f="price" value="${it.price === null ? '' : fmtQty(it.price)}" placeholder="${fmtQty(state.rate)}" title="Cena za MJ (prázdné = hodinovka)" inputmode="decimal">
         <button class="del" title="Odebrat položku" aria-label="Odebrat položku">✕</button>
@@ -806,8 +830,11 @@ function renderItems(){
 /* ================= PDF (pdfmake, vektor) ================= */
 const PDF_CW = 505, PDF_INK='#15181D', PDF_SOFT='#5B6169', PDF_LINE='#D8DBD8';
 function pdfHr(w, thickness, color){ return { canvas:[{ type:'line', x1:0, y1:0, x2:w, y2:0, lineWidth:thickness, lineColor:color }] }; }
+/* Dlouhé názvy bez mezer (04544_3_NESTLE_…) by pdfmake nezalomil a vytlačil by sloupec Celkem mimo stránku.
+   Za každé podtržítko se vloží mezera nulové šířky (U+200B) — neviditelná, jen povolí zalomení, stejně jako <wbr> v náhledu. */
+function pdfSoftBreaks(s){ return String(s).replace(/_/g, '_​'); }
 function pdfKv(pairs){
-  return { table:{ widths:['auto','*'], body: pairs.map(([k,v]) => [ {text:k, color:PDF_SOFT}, {text:v, bold:true} ]) },
+  return { table:{ widths:['auto','*'], body: pairs.map(([k,v]) => [ {text:k, color:PDF_SOFT, noWrap:true}, {text:v, bold:true, noWrap:true} ]) },
     layout:{ defaultBorder:false, paddingLeft:()=>0, paddingRight:()=>10, paddingTop:()=>1.2, paddingBottom:()=>1.2 } };
 }
 function buildInvoiceDoc(){
@@ -823,7 +850,7 @@ function buildInvoiceDoc(){
   ])];
   if(state.items.length){
     for(const it of state.items) body.push(row([
-      { text: fmtQty(it.qty)+' '+it.unit, noWrap:true }, { text: it.label || '' },
+      { text: fmtHours(it)+' '+it.unit, noWrap:true }, { text: pdfSoftBreaks(it.label || '') },
       { text: fmtMoney(effPrice(it)), alignment:'right', noWrap:true }, { text: fmtMoney(itemTotal(it)), alignment:'right', noWrap:true },
     ]));
   } else body.push(hq ? [{ text:'Zatím žádné položky…', color:PDF_SOFT, colSpan:2 }, {}]
@@ -885,7 +912,7 @@ function buildInvoiceDoc(){
           ['Variabilní symbol', inv.vs || '—'],
           ['Způsob platby', inv.pay],
         ]),
-        pdfKv([ ['Datum vystavení', fmtDate(inv.issue)], ['Datum splatnosti', fmtDate(inv.due)] ]),
+        { width:'auto', ...pdfKv([ ['Datum vystavení', fmtDate(inv.issue)], ['Datum splatnosti', fmtDate(inv.due)] ]) },
       ], columnGap:38, margin:[0,5,0,5] },
       pdfHr(PDF_CW,0.75,PDF_LINE),
       ...(inv.intro ? [{ text:inv.intro, margin:[0,14,0,0] }] : []),
@@ -1191,6 +1218,27 @@ function flash(msg, isErr){
   sel.addEventListener('change', () => { nastaveni.slucovani = sel.value; persist(); flash('Slučování: ' + SLUCOVANI[sel.value] + '. Projeví se při dalším importu.'); });
 })();
 
+/* ================= Pronájem HUB =================
+   nastaveni.hubPronajem (bool) a nastaveni.hubCastka (Kč) — zatím jen uložená volba,
+   chování na faktuře se doplní. */
+function hubCastkaNum(){ const n = parseFloat(nastaveni.hubCastka); return isFinite(n) && n > 0 ? n : 0; }
+function fillHub(){
+  $('hubOn').checked = !!nastaveni.hubPronajem;
+  $('hubCastka').value = hubCastkaNum() || '';
+  $('hubCastkaField').style.display = nastaveni.hubPronajem ? '' : 'none';
+}
+$('hubOn').addEventListener('change', e => {
+  nastaveni.hubPronajem = e.target.checked;
+  $('hubCastkaField').style.display = e.target.checked ? '' : 'none';
+  if(e.target.checked) $('hubCastka').focus();
+  persist();
+});
+$('hubCastka').addEventListener('input', e => {
+  const n = parseFloat(String(e.target.value).replace(',', '.'));
+  nastaveni.hubCastka = isFinite(n) && n > 0 ? n : 0;
+  persist();
+});
+
 /* ================= Záložky panelu ================= */
 function showTab(name){
   for(const b of document.querySelectorAll('#tabs button')) b.classList.toggle('on', b.dataset.tab === name);
@@ -1296,6 +1344,7 @@ async function boot(){
   nastaveni = b.nastaveni || nastaveni;
   if(!SLUCOVANI[nastaveni.slucovani]) nastaveni.slucovani = SLUCOVANI_VYCHOZI;
   $('importMode').value = nastaveni.slucovani;
+  fillHub();
   customers = b.odberatele || [];
   faktury = b.faktury || [];
   state = b.draft || freshState();
