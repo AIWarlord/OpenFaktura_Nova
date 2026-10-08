@@ -41,6 +41,16 @@ Hodiny sloučených zakázek se sečtou. Změna přepínače se projeví až př
 dalším importu, už načtené položky se nemění.
 
 
+SKRYTÍ MNOŽSTVÍ A CENY ZA MJ
+----------------------------
+V Nastavení → Dodavatel je volba „Na faktuře skrýt množství a cenu za MJ“
+(výchozí zapnuto). Faktura pak v náhledu, tisku i PDF uvádí u každé
+položky jen název a částku celkem. Hodiny a sazba zůstávají v programu
+(v seznamu položek) a dál se z nich počítá celková částka. Volba se
+ukládá i ke každé uložené faktuře, starší faktury se tedy otevřou tak,
+jak byly vystaveny.
+
+
 VERZE A AKTUALIZACE
 -------------------
 Levý panel má tři záložky: Faktura (číslo, položky, odběratel),

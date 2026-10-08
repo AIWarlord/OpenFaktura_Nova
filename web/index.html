@@ -381,6 +381,9 @@ input,select,textarea{font:inherit;color:var(--ink)}
           <label class="chk"><input type="checkbox" id="sVat"> Neplátce DPH</label>
         </div>
         <div class="f" id="vatRateField" style="display:none"><label for="sVatRate">Sazba DPH (%)</label><input id="sVatRate" type="number" min="0" step="1"></div>
+        <div class="f full chk-holder">
+          <label class="chk"><input type="checkbox" id="sHideQty"> Na faktuře skrýt množství a cenu za MJ (jen položka a celkem)</label>
+        </div>
         <div class="f full"><label for="sNote">Poznámka v patičce</label><input id="sNote" type="text"></div>
       </div>
       <p class="hint">Údaje dodavatele, DPH a poznámka se tisknou na každou fakturu a zůstávají uložené pro příští faktury. IBAN pro QR platbu se z čísla účtu dopočítá automaticky: <b id="ibanPreview">—</b></p>
@@ -432,7 +435,10 @@ const api = {
 };
 
 /* ================= Stav ================= */
-let nastaveni = { supplier:{name:'',street:'',city:'',ico:'',dic:'',novat:true,account:'',note:''}, rate:650, vatRate:21, lastInvoiceNumber:null };
+let nastaveni = { supplier:{name:'',street:'',city:'',ico:'',dic:'',novat:true,account:'',note:''}, rate:650, vatRate:21, skrytMnozstvi:true, lastInvoiceNumber:null };
+/* Skrýt množství a cenu za MJ na faktuře (náhled, tisk, PDF) — kvůli švarcsystému se fakturuje
+   jen položka a částka. Volba se pamatuje v nastavení i ve snímku každé uložené faktury. */
+function hideQty(){ return state.hideQty !== false; }
 let customers = [];
 let faktury = [];           /* souhrny: {number, customer, issue, total, paid, savedAt} */
 let state = null;
@@ -459,7 +465,7 @@ function freshState(){
       issue: todayISO(), due: plusDaysISO(todayISO(),14),
       pay:'Převodem', intro:'Fakturuji vám grafické práce.'
     },
-    rate: nastaveni.rate, vatRate: nastaveni.vatRate, items: []
+    rate: nastaveni.rate, vatRate: nastaveni.vatRate, hideQty: nastaveni.skrytMnozstvi !== false, items: []
   };
 }
 
@@ -468,7 +474,7 @@ let draftTimer, nastTimer;
 function persist(){
   clearTimeout(draftTimer);
   draftTimer = setTimeout(() => { api.put('/api/draft', state).catch(serverDown); }, 400);
-  nastaveni.supplier = state.supplier; nastaveni.rate = state.rate; nastaveni.vatRate = state.vatRate;
+  nastaveni.supplier = state.supplier; nastaveni.rate = state.rate; nastaveni.vatRate = state.vatRate; nastaveni.skrytMnozstvi = hideQty();
   clearTimeout(nastTimer);
   nastTimer = setTimeout(() => { api.put('/api/nastaveni', nastaveni).catch(()=>{}); }, 600);
 }
@@ -706,13 +712,15 @@ function renderInvoice(){
   const s = state.supplier, c = state.customer, inv = state.invoice;
   const iban = czIban(s.account);
   const qr = (inv.pay === 'Převodem') ? qrDataUrl() : null;
+  const hq = hideQty();
   const rows = state.items.map(it => `
     <tr>
-      <td class="qty">${fmtQty(it.qty)} ${esc(it.unit)}</td>
+      ${hq ? '' : `<td class="qty">${fmtQty(it.qty)} ${esc(it.unit)}</td>`}
       <td class="it">${esc(it.label).replace(/_/g,'_<wbr>')}</td>
-      <td class="r">${fmtMoney(effPrice(it))}</td>
+      ${hq ? '' : `<td class="r">${fmtMoney(effPrice(it))}</td>`}
       <td class="r">${fmtMoney(itemTotal(it))}</td>
     </tr>`).join('');
+  const colCount = hq ? 2 : 4;
 
   const sumHtml = isVatPayer() ? `
     <div class="sum"><div class="box">
@@ -763,9 +771,9 @@ function renderInvoice(){
     </div>
     ${inv.intro ? `<p class="intro">${esc(inv.intro)}</p>` : ''}
     <table>
-      <colgroup><col class="c-qty"><col><col class="c-price"><col class="c-total"></colgroup>
-      <thead><tr><th>Množství</th><th>Položka</th><th class="r">Cena za MJ</th><th class="r">Celkem</th></tr></thead>
-      <tbody>${rows || '<tr><td colspan="4" style="color:#5B6169">Zatím žádné položky…</td></tr>'}</tbody>
+      <colgroup>${hq ? '<col><col class="c-total">' : '<col class="c-qty"><col><col class="c-price"><col class="c-total">'}</colgroup>
+      <thead><tr>${hq ? '' : '<th>Množství</th>'}<th>Položka</th>${hq ? '' : '<th class="r">Cena za MJ</th>'}<th class="r">Celkem</th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="${colCount}" style="color:#5B6169">Zatím žádné položky…</td></tr>`}</tbody>
     </table>
     ${sumHtml}
     <div class="bottom">
@@ -806,16 +814,21 @@ function buildInvoiceDoc(){
   const s = state.supplier, c = state.customer, inv = state.invoice;
   const iban = czIban(s.account);
   const qr = (inv.pay === 'Převodem') ? qrPngDataUrl() : null;
-  const body = [[
+  const hq = hideQty();
+  /* při skrytém množství a ceně za MJ má tabulka jen 2 sloupce: položka a celkem */
+  const row = cells => hq ? [cells[1], cells[3]] : cells;
+  const body = [row([
     { text:'MNOŽSTVÍ', style:'th' }, { text:'POLOŽKA', style:'th' },
     { text:'CENA ZA MJ', style:'th', alignment:'right' }, { text:'CELKEM', style:'th', alignment:'right' },
-  ]];
+  ])];
   if(state.items.length){
-    for(const it of state.items) body.push([
+    for(const it of state.items) body.push(row([
       { text: fmtQty(it.qty)+' '+it.unit, noWrap:true }, { text: it.label || '' },
       { text: fmtMoney(effPrice(it)), alignment:'right', noWrap:true }, { text: fmtMoney(itemTotal(it)), alignment:'right', noWrap:true },
-    ]);
-  } else body.push([{ text:'Zatím žádné položky…', color:PDF_SOFT, colSpan:4 }, {}, {}, {}]);
+    ]));
+  } else body.push(hq ? [{ text:'Zatím žádné položky…', color:PDF_SOFT, colSpan:2 }, {}]
+                      : [{ text:'Zatím žádné položky…', color:PDF_SOFT, colSpan:4 }, {}, {}, {}]);
+  const widths = hq ? ['*',85] : [62,'*',76,85];
 
   const sumInner = [];
   if(isVatPayer()){
@@ -876,7 +889,7 @@ function buildInvoiceDoc(){
       ], columnGap:38, margin:[0,5,0,5] },
       pdfHr(PDF_CW,0.75,PDF_LINE),
       ...(inv.intro ? [{ text:inv.intro, margin:[0,14,0,0] }] : []),
-      { margin:[0,10,0,0], table:{ headerRows:1, widths:[62,'*',76,85], body },
+      { margin:[0,10,0,0], table:{ headerRows:1, widths, body },
         layout:{
           hLineWidth:(i)=> i===0?0 : (i===1?1.5:0.6),
           vLineWidth:()=>0,
@@ -884,7 +897,7 @@ function buildInvoiceDoc(){
           paddingLeft:()=>0, paddingRight:(i,node)=> i===node.table.widths.length-1?0:8,
           paddingTop:()=>3.2, paddingBottom:()=>3.2,
         }},
-      { columns:[ '*', { width:190, stack:sumInner } ], margin:[0,10,0,0] },
+      { columns:[ { width:'*', text:'' }, { width:190, stack:sumInner } ], margin:[0,10,0,0] },
       bottom,
     ],
     styles:{
@@ -969,6 +982,7 @@ async function openFaktura(number){
     const rec = await api.get('/api/faktury/' + encodeURIComponent(number));
     state = JSON.parse(JSON.stringify(rec.snapshot));
     if(state.vatRate === undefined) state.vatRate = 21;
+    if(state.hideQty === undefined) state.hideQty = nastaveni.skrytMnozstvi !== false;
     fillForm(); refresh(); showTab('faktura');
     flash('Otevřena faktura ' + number + '.');
   }catch(e){ serverDown(); }
@@ -1004,6 +1018,7 @@ function fillForm(){
   $('sIco').value = s.ico; $('sDic').value = s.dic; $('sAccount').value = s.account;
   $('sVat').checked = s.novat; $('sNote').value = s.note;
   $('sVatRate').value = state.vatRate;
+  $('sHideQty').checked = hideQty();
 }
 function refresh(){
   if(!state.invoice.vsManual) state.invoice.vs = vsFromNumber(state.invoice.number);
@@ -1035,6 +1050,7 @@ bind('sDic', t=>state.supplier.dic=t.value.trim()); bind('sAccount', t=>state.su
 bind('sNote', t=>state.supplier.note=t.value);
 bind('sVatRate', t=>{ state.vatRate = parseFloat(t.value) || 0; });
 $('sVat').addEventListener('change', e => { state.supplier.novat = e.target.checked; refresh(); });
+$('sHideQty').addEventListener('change', e => { state.hideQty = e.target.checked; refresh(); persist(); });
 
 $('itemsBox').addEventListener('input', e => {
   const row = e.target.closest('.item'); if(!row) return;
@@ -1284,6 +1300,7 @@ async function boot(){
   faktury = b.faktury || [];
   state = b.draft || freshState();
   if(state.vatRate === undefined) state.vatRate = 21;
+  if(state.hideQty === undefined) state.hideQty = nastaveni.skrytMnozstvi !== false;
   if(!state.supplier) state.supplier = {...nastaveni.supplier};
   verze = b.verze || '';
   showVerze(); updNote('Verze ' + (verze || '?') + '.');
