@@ -1,7 +1,7 @@
 {
-  "verze": "1.5.1",
+  "verze": "1.5.2",
   "datum": "2026-10-08",
-  "popis": "Kontrola aktualizací vidí novou verzi hned po vydání (obchází cache GitHubu, soubory se stahují z konkrétního commitu).",
+  "popis": "Zkušební vydání pro ověření upozornění na novou verzi. Žádná změna ve funkcích.",
   "soubory": [
     "server.js",
     "web/index.html",
