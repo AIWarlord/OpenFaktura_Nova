@@ -43,7 +43,9 @@ const DEFAULT_NASTAVENI = {
   vatRate: 21,
   skrytMnozstvi: true,   /* na faktuře jen položka a celkem (bez množství a ceny za MJ) */
   hubPronajem: false,    /* platím si pronájem HUB */
-  hubCastka: 0,          /* výše pronájmu v Kč */
+  hubCastka: 0,          /* výše pronájmu v Kč za měsíc */
+  hubOdberatel: '',      /* název odběratele, kterému se pronájem přičítá (Line Art) */
+  hubNazev: 'Pronájem HUB',   /* text řádku na faktuře */
   lastInvoiceNumber: null
 };
 

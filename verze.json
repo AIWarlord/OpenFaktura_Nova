@@ -1,7 +1,7 @@
 {
-  "verze": "1.4.1",
+  "verze": "1.5.0",
   "datum": "2026-10-08",
-  "popis": "Minuty z výkazu se už nezaokrouhlují (160:00 h = 160 h, zobrazení 1:04), dlouhé názvy položek se v PDF zalamují, IBAN a VS v PDF na jednom řádku.",
+  "popis": "Pronájem HUB: v Nastavení částka, odběratel a text řádku; přičte se automaticky na první fakturu odběrateli v měsíci, u faktury lze ručně přepnout. Výrazné upozornění na novou verzi hned po startu.",
   "soubory": [
     "server.js",
     "web/index.html",

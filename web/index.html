@@ -66,6 +66,15 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .tabs button:hover{color:var(--ink)}
 .tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
 .tabs button .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-left:5px;vertical-align:middle}
+/* dialog „nová verze“ po startu */
+.modal{position:fixed;inset:0;z-index:50;background:rgba(21,24,29,.55);display:flex;align-items:center;justify-content:center;padding:20px}
+.modal[hidden]{display:none}
+.modal .box{background:#fff;border-radius:12px;padding:22px 24px;max-width:460px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal h2{font-size:1.05rem;margin:0 0 6px}
+.modal .ver-line{font-size:.9rem;color:var(--ink-soft);margin:0 0 10px}
+.modal .popis{font-size:.85rem;line-height:1.45;margin:0 0 14px}
+.modal .note{font-size:.8rem;color:var(--ink-soft);min-height:1.2em;margin:0 0 14px}
+.modal .btnbar{display:flex;gap:8px;justify-content:flex-end}
 .tab-panel[hidden]{display:none}
 
 .sec{border-bottom:1px solid var(--line);padding:16px 22px 20px}
@@ -119,6 +128,7 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .item input:focus{background:#fff;border-color:var(--accent);outline:none}
 .item .qty,.item .price{font-variant-numeric:tabular-nums;text-align:right}
 .item .lbl{font-size:.8rem}
+.item.hub{border-color:var(--accent);background:#F4F6FF}
 .item .meta{grid-column:1 / -1;display:flex;justify-content:space-between;align-items:center;font-size:.68rem;color:var(--ink-soft);padding:0 4px}
 .item .meta .mj{display:inline-flex;align-items:center;gap:4px}
 .item .meta .unit{width:58px;padding:1px 4px;font-size:.68rem;border:1px solid var(--line);background:#fff;border-radius:4px;color:var(--ink)}
@@ -285,6 +295,9 @@ input,select,textarea{font:inherit;color:var(--ink)}
         <div class="f"><label for="invRate">Hodinovka pro tuto fakturu (Kč/hod.)</label><input id="invRate" type="number" min="0" step="10"></div>
         <div class="f full"><label for="invIntro">Úvodní text</label><input id="invIntro" type="text"></div>
       </div>
+      <div class="f full chk-holder" id="invHubField" style="display:none">
+        <label class="chk"><input type="checkbox" id="invHub"> Pronájem HUB na této faktuře</label>
+      </div>
       <div class="btnbar">
         <button class="btn" id="btnNew">Nová faktura (další číslo)</button>
       </div>
@@ -375,7 +388,7 @@ input,select,textarea{font:inherit;color:var(--ink)}
         <div class="f full"><label for="sCity">PSČ a město</label><input id="sCity" type="text"></div>
         <div class="f"><label for="sIco">IČO</label><input id="sIco" type="text"></div>
         <div class="f"><label for="sDic">DIČ (nepovinné)</label><input id="sDic" type="text" placeholder="—"></div>
-        <div class="f"><label for="sAccount">Bankovní účet</label><input id="sAccount" type="text" placeholder="1481807028/3030"></div>
+        <div class="f"><label for="sAccount">Bankovní účet</label><input id="sAccount" type="text" placeholder="123456789/0100"></div>
         <div class="f chk-holder">
           <label>&nbsp;</label>
           <label class="chk"><input type="checkbox" id="sVat"> Neplátce DPH</label>
@@ -396,9 +409,11 @@ input,select,textarea{font:inherit;color:var(--ink)}
         <div class="f full chk-holder">
           <label class="chk"><input type="checkbox" id="hubOn"> Platím si pronájem – HUB</label>
         </div>
-        <div class="f" id="hubCastkaField" style="display:none"><label for="hubCastka">Výše pronájmu (Kč)</label><input id="hubCastka" type="number" min="0" step="1" placeholder="0" inputmode="decimal"></div>
+        <div class="f" id="hubCastkaField" style="display:none"><label for="hubCastka">Výše pronájmu (Kč / měsíc)</label><input id="hubCastka" type="number" min="0" step="1" placeholder="0" inputmode="decimal"></div>
+        <div class="f" id="hubOdberatelField" style="display:none"><label for="hubOdberatel">Fakturovat odběrateli</label><select id="hubOdberatel"></select></div>
+        <div class="f full" id="hubNazevField" style="display:none"><label for="hubNazev">Text řádku na faktuře</label><input id="hubNazev" type="text" placeholder="Pronájem HUB"></div>
       </div>
-      <p class="hint">Částka, kterou máte za pronájem HUBu domluvenou. Každý ji může mít jinou, proto se zadává zde.</p>
+      <p class="hint">Pronájem se každý měsíc <b>přičte</b> jako řádek na první fakturu vybranému odběrateli (podle data vystavení). Další faktura v témže měsíci, třeba za mimořádné práce, ho nedostane. Na záložce Faktura to lze u každé faktury ručně přepnout.</p>
     </section>
 
     <!-- Aktualizace -->
@@ -432,6 +447,18 @@ input,select,textarea{font:inherit;color:var(--ink)}
   </main>
 </div>
 
+<div class="modal" id="updModal" hidden role="dialog" aria-modal="true" aria-labelledby="updModalTitle">
+  <div class="box">
+    <h2 id="updModalTitle">Je k dispozici nová verze OpenFaktury</h2>
+    <p class="ver-line" id="updModalVer"></p>
+    <p class="popis" id="updModalPopis"></p>
+    <p class="note" id="updModalNote">Doporučujeme aktualizovat hned, než začnete pracovat. Vaše faktury a nastavení zůstanou beze změny.</p>
+    <div class="btnbar">
+      <button type="button" class="btn" id="updModalLater">Později</button>
+      <button type="button" class="btn primary" id="updModalNow">Aktualizovat nyní</button>
+    </div>
+  </div>
+</div>
 <script src="lib/qrcode.js"></script>
 <script src="lib/pdfmake.js"></script>
 <script>
@@ -816,7 +843,7 @@ function renderItems(){
     box.innerHTML = `<div class="empty">Zatím žádné položky.<br>Nahrajte tabulku, vložte řádky z Excelu, nebo přidejte položku ručně.</div>`;
   } else {
     box.innerHTML = state.items.map((it,i)=>`
-      <div class="item" data-i="${i}">
+      <div class="item${it.hub ? ' hub' : ''}" data-i="${i}" ${it.hub ? 'title="Řádek pronájmu HUB — přidává se automaticky podle nastavení"' : ''}>
         <input class="qty" data-f="qty" value="${fmtHours(it)}" title="Množství (hodiny lze psát i jako 1:04)" inputmode="decimal">
         <input class="lbl" data-f="label" value="${esc(it.label)}" title="Název položky">
         <input class="price" data-f="price" value="${it.price === null ? '' : fmtQty(it.price)}" placeholder="${fmtQty(state.rate)}" title="Cena za MJ (prázdné = hodinovka)" inputmode="decimal">
@@ -1053,6 +1080,8 @@ function refresh(){
   const iban = czIban(state.supplier.account);
   $('ibanPreview').textContent = iban ? ibanPretty(iban) : 'zadejte účet ve tvaru 123456789/0100';
   $('vatRateField').style.display = isVatPayer() ? '' : 'none';
+  $('invHubField').style.display = hubEnabled() ? '' : 'none';
+  $('invHub').checked = !!state.hub;
   $('railTotalLabel').textContent = isVatPayer() ? 'Celkem s DPH' : 'Celkem';
   renderItems();
   renderInvoice();
@@ -1063,7 +1092,7 @@ function refresh(){
 const bind = (id, fn) => $(id).addEventListener('input', e => { fn(e.target); refresh(); });
 bind('invNumber', t => { state.invoice.number = t.value.trim(); });
 bind('invVs',     t => { state.invoice.vs = t.value.trim(); state.invoice.vsManual = t.value.trim() !== vsFromNumber(state.invoice.number); });
-bind('invIssue',  t => { state.invoice.issue = t.value; state.invoice.due = plusDaysISO(t.value || todayISO(), 14); $('invDue').value = state.invoice.due; });
+bind('invIssue',  t => { state.invoice.issue = t.value; state.invoice.due = plusDaysISO(t.value || todayISO(), 14); $('invDue').value = state.invoice.due; decideHub(); renderItems(); $('invHub').checked = !!state.hub; });
 bind('invDue',    t => { state.invoice.due = t.value; });
 bind('invPay',    t => { state.invoice.pay = t.value; });
 bind('invIntro',  t => { state.invoice.intro = t.value; });
@@ -1092,7 +1121,9 @@ $('itemsBox').addEventListener('input', e => {
 $('itemsBox').addEventListener('change', () => renderItems());
 $('itemsBox').addEventListener('click', e => {
   if(!e.target.classList.contains('del')) return;
-  state.items.splice(+e.target.closest('.item').dataset.i, 1);
+  const idx = +e.target.closest('.item').dataset.i;
+  if(state.items[idx] && state.items[idx].hub){ state.hub = false; state.hubManual = true; }   /* smazání řádku HUB = ruční vypnutí */
+  state.items.splice(idx, 1);
   refresh();
 });
 
@@ -1101,7 +1132,7 @@ $('fileInput').addEventListener('change', e => {
   const f = e.target.files[0]; if(!f) return;
   const reader = new FileReader();
   reader.onload = () => {
-    try { state.items = importXml(reader.result); refresh(); flash(`Načteno ${state.items.length} zakázek z tabulky.`); }
+    try { state.items = importXml(reader.result); const n = state.items.length; applyHub(); refresh(); flash(`Načteno ${n} zakázek z tabulky.`); }
     catch(err){ flash(err.message, true); }
     e.target.value = '';
   };
@@ -1111,7 +1142,7 @@ $('btnPasteToggle').addEventListener('click', () => $('pasteArea').classList.tog
 $('btnPasteImport').addEventListener('click', () => {
   const items = importPaste($('pasteBox').value);
   if(!items.length){ flash('Ve vloženém textu se nenašly žádné řádky se zakázkami.', true); return; }
-  state.items = state.items.concat(items);
+  state.items = state.items.concat(items); applyHub();
   $('pasteBox').value = ''; $('pasteArea').classList.remove('open');
   refresh(); flash(`Přidáno ${items.length} položek.`);
 });
@@ -1135,6 +1166,7 @@ $('btnCustSave').addEventListener('click', async () => {
 $('custSelect').addEventListener('change', e => {
   const i = e.target.value; if(i === '') return;
   state.customer = {...customers[+i]};
+  decideHub();
   fillForm(); refresh();
 });
 $('btnCustDel').addEventListener('click', async () => {
@@ -1152,8 +1184,9 @@ $('btnNew').addEventListener('click', () => {
   state.invoice.issue = todayISO();
   state.invoice.due = plusDaysISO(todayISO(),14);
   state.items = [];
+  state.hubManual = false; decideHub();
   fillForm(); refresh();
-  flash(`Založena faktura ${state.invoice.number}.`);
+  flash(`Založena faktura ${state.invoice.number}.` + (state.hub ? ' Přidán řádek „' + hubNazev() + '“.' : ''));
 });
 
 $('btnArchive').addEventListener('click', async () => {
@@ -1219,24 +1252,75 @@ function flash(msg, isErr){
 })();
 
 /* ================= Pronájem HUB =================
-   nastaveni.hubPronajem (bool) a nastaveni.hubCastka (Kč) — zatím jen uložená volba,
-   chování na faktuře se doplní. */
+   Pronájem HUBu se každý měsíc PŘIČÍTÁ na fakturu odběrateli (Line Art): ten ho pak vyfakturuje zpět
+   a platí se z navýšené částky. Nastavení: hubPronajem (zap.), hubCastka (Kč), hubOdberatel (název
+   odběratele), hubNazev (text řádku). Pravidlo: řádek dostane jen PRVNÍ faktura danému odběrateli
+   v daném měsíci (podle data vystavení); další faktura v témže měsíci (mimořádné práce) ho nedostane.
+   Na faktuře je přepínač „Pronájem HUB na této faktuře“, kterým lze pravidlo ručně přebít
+   (state.hub = ano/ne, state.hubManual = přebito ručně). Řádek je běžná položka s příznakem hub:true. */
+const HUB_NAZEV_VYCHOZI = 'Pronájem HUB';
 function hubCastkaNum(){ const n = parseFloat(nastaveni.hubCastka); return isFinite(n) && n > 0 ? n : 0; }
+function hubNazev(){ return (nastaveni.hubNazev || '').trim() || HUB_NAZEV_VYCHOZI; }
+function hubEnabled(){ return !!nastaveni.hubPronajem && hubCastkaNum() > 0; }
+function hubCustomerMatches(){
+  const want = normPart(nastaveni.hubOdberatel || ''), have = normPart(state.customer.name || '');
+  return !!want && want === have;
+}
+/* automatické pravidlo pro aktuální fakturu */
+function hubRule(){
+  if(!hubEnabled() || !hubCustomerMatches()) return false;
+  const month = String(state.invoice.issue || '').slice(0,7);
+  if(!month) return false;
+  const cust = normPart(state.customer.name || '');
+  const jina = faktury.some(f => f.number !== state.invoice.number && normPart(f.customer || '') === cust && String(f.issue || '').slice(0,7) === month);
+  return !jina;
+}
+/* srovná položky se state.hub: řádek HUB je vždy poslední; už existující řádek (třeba s přepsanou částkou) se zachová */
+function applyHub(){
+  const existing = state.items.find(it => it.hub);
+  state.items = state.items.filter(it => !it.hub);
+  if(state.hub && hubEnabled()) state.items.push(existing || { qty:1, unit:'měs.', label: hubNazev(), price: hubCastkaNum(), hub:true });
+}
+function decideHub(){
+  if(!state.hubManual) state.hub = hubRule();
+  applyHub();
+}
+function hubSettingsChanged(){
+  persist();
+  decideHub(); refresh();
+}
 function fillHub(){
   $('hubOn').checked = !!nastaveni.hubPronajem;
   $('hubCastka').value = hubCastkaNum() || '';
-  $('hubCastkaField').style.display = nastaveni.hubPronajem ? '' : 'none';
+  $('hubNazev').value = nastaveni.hubNazev || '';
+  const sel = $('hubOdberatel');
+  sel.innerHTML = '<option value="">— vyberte odběratele —</option>' + customers.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
+  if(!nastaveni.hubOdberatel){ const la = customers.find(c => /line\s*art/i.test(c.name)); if(la) nastaveni.hubOdberatel = la.name; }
+  sel.value = nastaveni.hubOdberatel || '';
+  for(const id of ['hubCastkaField','hubOdberatelField','hubNazevField']) $(id).style.display = nastaveni.hubPronajem ? '' : 'none';
 }
 $('hubOn').addEventListener('change', e => {
   nastaveni.hubPronajem = e.target.checked;
-  $('hubCastkaField').style.display = e.target.checked ? '' : 'none';
+  for(const id of ['hubCastkaField','hubOdberatelField','hubNazevField']) $(id).style.display = e.target.checked ? '' : 'none';
   if(e.target.checked) $('hubCastka').focus();
-  persist();
+  hubSettingsChanged();
 });
 $('hubCastka').addEventListener('input', e => {
   const n = parseFloat(String(e.target.value).replace(',', '.'));
   nastaveni.hubCastka = isFinite(n) && n > 0 ? n : 0;
-  persist();
+  const it = state.items.find(x => x.hub); if(it) it.price = hubCastkaNum();
+  hubSettingsChanged();
+});
+$('hubOdberatel').addEventListener('change', e => { nastaveni.hubOdberatel = e.target.value; hubSettingsChanged(); });
+$('hubNazev').addEventListener('input', e => {
+  nastaveni.hubNazev = e.target.value;
+  const it = state.items.find(x => x.hub); if(it) it.label = hubNazev();
+  hubSettingsChanged();
+});
+$('invHub').addEventListener('change', e => {
+  state.hub = e.target.checked; state.hubManual = true;
+  applyHub(); refresh();
+  flash(state.hub ? 'Řádek „' + hubNazev() + '“ přidán na fakturu.' : 'Řádek „' + hubNazev() + '“ z faktury odebrán.');
 });
 
 /* ================= Záložky panelu ================= */
@@ -1268,7 +1352,30 @@ function showVerze(){
     b.classList.remove('upd'); b.title = 'Verze programu · data na disku';
   }
 }
-function updNote(msg, isErr){ const el = $('updNote'); el.textContent = msg; el.style.color = isErr ? 'var(--warn)' : ''; }
+function updNote(msg, isErr){
+  const el = $('updNote'); el.textContent = msg; el.style.color = isErr ? 'var(--warn)' : '';
+  /* průběh aktualizace zrcadlit i do dialogu, pokud je otevřený */
+  if(!$('updModal').hidden){ const n = $('updModalNote'); n.textContent = msg; n.style.color = isErr ? 'var(--warn)' : ''; }
+}
+/* Výrazné upozornění po startu: dialog s popisem nové verze a tlačítkem Aktualizovat nyní.
+   Zobrazí se při každém startu, dokud se neaktualizuje; „Později“ ho zavře do příštího startu. */
+function showUpdModal(r){
+  $('updModalVer').textContent = 'Verze ' + r.dostupna + (r.datum ? ' z ' + r.datum : '') + ' · máte verzi ' + r.aktualni;
+  $('updModalPopis').textContent = r.popis || '';
+  $('updModalNote').textContent = 'Doporučujeme aktualizovat hned, než začnete pracovat. Vaše faktury a nastavení zůstanou beze změny.';
+  $('updModalNote').style.color = '';
+  $('updModalNow').disabled = false; $('updModalLater').disabled = false;
+  $('updModal').hidden = false;
+  $('updModalNow').focus();
+}
+$('updModalLater').addEventListener('click', () => { $('updModal').hidden = true; showTab('nastaveni'); $('secUpdate').scrollIntoView({ behavior:'smooth' }); });
+$('updModalNow').addEventListener('click', async () => {
+  $('updModalNow').disabled = true; $('updModalLater').disabled = true;
+  showTab('nastaveni');
+  await applyUpdate();
+  /* při chybě nechat dialog otevřený s hláškou a povolit tlačítka; při úspěchu se stránka sama obnoví */
+  if(!$('btnUpdApply').disabled){ $('updModalNow').disabled = false; $('updModalLater').disabled = false; }
+});
 async function checkUpdate(silent){
   const btn = $('btnUpdCheck'); btn.disabled = true;
   if(!silent) updNote('Zjišťuji dostupnou verzi…');
@@ -1277,8 +1384,8 @@ async function checkUpdate(silent){
     if(r.novejsi){
       dostupnaAktualizace = r;
       $('btnUpdApply').hidden = false;
-      if(silent) flash('Je k dispozici nová verze ' + r.dostupna + '. Najdete ji v Nastavení → Aktualizace.');
       updNote('Je k dispozici verze ' + r.dostupna + (r.datum ? ' (' + r.datum + ')' : '') + (r.popis ? ': ' + r.popis : '') + '. Máte verzi ' + r.aktualni + '.');
+      if(silent){ flash('Je k dispozici nová verze ' + r.dostupna + '. Najdete ji v Nastavení → Aktualizace.'); showUpdModal(r); }
     } else {
       dostupnaAktualizace = null;
       $('btnUpdApply').hidden = true;
@@ -1344,7 +1451,6 @@ async function boot(){
   nastaveni = b.nastaveni || nastaveni;
   if(!SLUCOVANI[nastaveni.slucovani]) nastaveni.slucovani = SLUCOVANI_VYCHOZI;
   $('importMode').value = nastaveni.slucovani;
-  fillHub();
   customers = b.odberatele || [];
   faktury = b.faktury || [];
   state = b.draft || freshState();
@@ -1353,7 +1459,9 @@ async function boot(){
   if(!state.supplier) state.supplier = {...nastaveni.supplier};
   verze = b.verze || '';
   showVerze(); updNote('Verze ' + (verze || '?') + '.');
-  fillForm(); renderCustomers(); renderFaktury(); refresh();
+  renderCustomers(); fillHub();
+  if(state.hub === undefined) decideHub(); else applyHub();   /* rozpracovaná faktura z dřívější verze: rozhodnout poprvé */
+  fillForm(); renderFaktury(); refresh();
   scaleSheet(); setTimeout(scaleSheet, 50);
   setTimeout(() => checkUpdate(true), 1500);
 }

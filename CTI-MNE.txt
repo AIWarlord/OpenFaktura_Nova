@@ -53,13 +53,27 @@ ukládá i ke každé uložené faktuře, starší faktury se tedy otevřou tak,
 jak byly vystaveny.
 
 
+PRONÁJEM HUB
+------------
+V Nastavení → Pronájem zapněte „Platím si pronájem – HUB“ a zadejte měsíční
+částku, odběratele (Line Art) a text řádku. Pronájem se PŘIČÍTÁ: při založení
+nové faktury tomuto odběrateli program přidá řádek „Pronájem HUB“ (1 měs.),
+ale jen když v témže měsíci (podle data vystavení) ještě žádná faktura
+tomuto odběrateli není. Druhá faktura v měsíci (mimořádné práce) řádek
+nedostane. Na záložce Faktura je přepínač „Pronájem HUB na této faktuře“,
+kterým lze pravidlo u konkrétní faktury ručně přebít; smazání řádku křížkem
+má stejný účinek. Nahrání tabulky řádek HUB zachová.
+
+
 VERZE A AKTUALIZACE
 -------------------
 Levý panel má tři záložky: Faktura (číslo, položky, odběratel),
 Přehled (archiv faktur a statistiky) a Nastavení (dodavatel, DPH,
-aktualizace). Když program najde novější verzi, zvýrazní se odznak verze
-u názvu, na záložce Nastavení se objeví tečka a po startu krátká hláška.
-Samotné tlačítko Aktualizovat je jen v Nastavení → Aktualizace.
+aktualizace). Když program najde novější verzi, otevře se hned po startu dialog
+s popisem novinek a tlačítkem „Aktualizovat nyní“ — doporučujeme
+aktualizovat dřív, než začnete pracovat. „Později“ dialog zavře do
+příštího startu; mezitím zůstává zvýrazněný odznak verze u názvu, tečka
+na záložce Nastavení a tlačítko Aktualizovat v Nastavení → Aktualizace.
 
 Číslo verze vidíte vlevo nahoře u názvu (např. v1.1.0) a v souboru
 verze.json. Značení je číslo.číslo.číslo:
