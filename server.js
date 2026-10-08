@@ -113,7 +113,25 @@ async function zdrojAktualizace(){
   const nast = await readJson(NASTAVENI, DEFAULT_NASTAVENI);
   let u = (nast && typeof nast.aktualizaceUrl === 'string' && nast.aktualizaceUrl.trim()) || AKTUALIZACE_URL;
   if(!u.endsWith('/')) u += '/';
-  return u;
+  return await pripniCommit(u);
+}
+/* raw.githubusercontent.com drží soubory ve své cache až 5 minut po nahrání a parametr ?t= v adrese
+   nepomáhá — hned po vydání by se tak nabízela ještě stará verze. Proto se u GitHubu nejdřív přes API
+   zjistí aktuální commit větve a soubory se čtou z adresy s jeho otiskem (nová adresa = nic v cache,
+   a všechny soubory jsou zaručeně z téhož vydání). Když se API nepodaří, zůstane původní adresa větve. */
+async function pripniCommit(u){
+  const m = u.match(/^https:\/\/raw\.githubusercontent\.com\/([^\/]+)\/([^\/]+)\/([^\/]+)\/$/);
+  if(!m) return u;
+  const [, owner, repo, ref] = m;
+  if(/^[0-9a-f]{40}$/i.test(ref)) return u;   /* už je to otisk commitu */
+  try {
+    const r = await fetch('https://api.github.com/repos/' + owner + '/' + repo + '/commits/' + encodeURIComponent(ref),
+      { signal: AbortSignal.timeout(10000), headers:{ 'Accept':'application/vnd.github.sha', 'User-Agent':'OpenFaktura', 'Cache-Control':'no-cache' } });
+    if(!r.ok) return u;
+    const sha = (await r.text()).trim();
+    if(!/^[0-9a-f]{40}$/i.test(sha)) return u;
+    return 'https://raw.githubusercontent.com/' + owner + '/' + repo + '/' + sha + '/';
+  } catch(e){ return u; }
 }
 async function zkontrolujAktualizaci(){
   const zdroj = await zdrojAktualizace();

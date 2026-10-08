@@ -1,7 +1,7 @@
 {
-  "verze": "1.5.0",
+  "verze": "1.5.1",
   "datum": "2026-10-08",
-  "popis": "Pronájem HUB: v Nastavení částka, odběratel a text řádku; přičte se automaticky na první fakturu odběrateli v měsíci, u faktury lze ručně přepnout. Výrazné upozornění na novou verzi hned po startu.",
+  "popis": "Kontrola aktualizací vidí novou verzi hned po vydání (obchází cache GitHubu, soubory se stahují z konkrétního commitu).",
   "soubory": [
     "server.js",
     "web/index.html",
