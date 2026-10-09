@@ -397,6 +397,9 @@ input,select,textarea{font:inherit;color:var(--ink)}
         <div class="f full chk-holder">
           <label class="chk"><input type="checkbox" id="sHideQty"> Na faktuře skrýt množství a cenu za MJ (jen položka a celkem)</label>
         </div>
+        <div class="f full chk-holder">
+          <label class="chk"><input type="checkbox" id="sRound"> Zaokrouhlovat celkovou částku na celé koruny (rozdíl se na faktuře vykáže jako „Zaokrouhlení“)</label>
+        </div>
         <div class="f full"><label for="sNote">Poznámka v patičce</label><input id="sNote" type="text"></div>
       </div>
       <p class="hint">Údaje dodavatele, DPH a poznámka se tisknou na každou fakturu a zůstávají uložené pro příští faktury. IBAN pro QR platbu se z čísla účtu dopočítá automaticky: <b id="ibanPreview">—</b></p>
@@ -475,10 +478,16 @@ const api = {
 };
 
 /* ================= Stav ================= */
-let nastaveni = { supplier:{name:'',street:'',city:'',ico:'',dic:'',novat:true,account:'',note:''}, rate:650, vatRate:21, skrytMnozstvi:true, lastInvoiceNumber:null };
+let nastaveni = { supplier:{name:'',street:'',city:'',ico:'',dic:'',novat:true,account:'',note:''}, rate:650, vatRate:21, skrytMnozstvi:true, zaokrouhlovat:true, lastInvoiceNumber:null };
 /* Skrýt množství a cenu za MJ na faktuře (náhled, tisk, PDF) — kvůli švarcsystému se fakturuje
    jen položka a částka. Volba se pamatuje v nastavení i ve snímku každé uložené faktury. */
 function hideQty(){ return state.hideQty !== false; }
+/* Zaokrouhlení celkové částky faktury na celé koruny (zákon o DPH § 37 umožňuje zaokrouhlit celkovou
+   částku, u neplátců jde o běžnou praxi). Rozdíl se na faktuře vykazuje jako řádek „Zaokrouhlení“
+   a QR platba i archiv pracují se zaokrouhlenou částkou. Volba se pamatuje v nastavení i ve snímku
+   každé uložené faktury; starší faktury (bez údaje) se otevřou bez zaokrouhlení, jak byly vystaveny. */
+function roundTotal(){ return state.roundTotal !== false; }
+function fmtMoneySigned(n){ return (n < 0 ? '−' : '+') + fmtMoney(Math.abs(n)); }
 let customers = [];
 let faktury = [];           /* souhrny: {number, customer, issue, total, paid, savedAt} */
 let state = null;
@@ -505,7 +514,7 @@ function freshState(){
       issue: todayISO(), due: plusDaysISO(todayISO(),14),
       pay:'Převodem', intro:'Fakturuji vám grafické práce.'
     },
-    rate: nastaveni.rate, vatRate: nastaveni.vatRate, hideQty: nastaveni.skrytMnozstvi !== false, items: []
+    rate: nastaveni.rate, vatRate: nastaveni.vatRate, hideQty: nastaveni.skrytMnozstvi !== false, roundTotal: nastaveni.zaokrouhlovat !== false, items: []
   };
 }
 
@@ -514,7 +523,7 @@ let draftTimer, nastTimer;
 function persist(){
   clearTimeout(draftTimer);
   draftTimer = setTimeout(() => { api.put('/api/draft', state).catch(serverDown); }, 400);
-  nastaveni.supplier = state.supplier; nastaveni.rate = state.rate; nastaveni.vatRate = state.vatRate; nastaveni.skrytMnozstvi = hideQty();
+  nastaveni.supplier = state.supplier; nastaveni.rate = state.rate; nastaveni.vatRate = state.vatRate; nastaveni.skrytMnozstvi = hideQty(); nastaveni.zaokrouhlovat = roundTotal();
   clearTimeout(nastTimer);
   nastTimer = setTimeout(() => { api.put('/api/nastaveni', nastaveni).catch(()=>{}); }, 600);
 }
@@ -555,7 +564,13 @@ function itemTotal(it){ return Math.round(it.qty * effPrice(it) * 100) / 100; }
 function grandTotal(){ return state.items.reduce((s,it)=> s + itemTotal(it), 0); }
 function isVatPayer(){ return !state.supplier.novat; }
 function vatAmount(){ return isVatPayer() ? Math.round(grandTotal() * state.vatRate) / 100 : 0; }
-function grandTotalDue(){ return grandTotal() + vatAmount(); }
+function grandTotalRaw(){ return Math.round((grandTotal() + vatAmount()) * 100) / 100; }
+function roundingAmount(){
+  if(!roundTotal()) return 0;
+  const raw = grandTotalRaw();
+  return Math.round((Math.round(raw) - raw) * 100) / 100;
+}
+function grandTotalDue(){ return Math.round((grandTotalRaw() + roundingAmount()) * 100) / 100; }
 
 /* ================= Label building ================= */
 /* Varianty slučování zakázek při importu (volba v sekci Položky, ukládá se do nastavení).
@@ -774,18 +789,22 @@ function renderInvoice(){
     </tr>`).join('');
   const colCount = hq ? 2 : 4;
 
+  const rnd = roundingAmount();
+  const rndRow = rnd ? `<dt>Zaokrouhlení</dt><dd>${fmtMoneySigned(rnd)}</dd>` : '';
   const sumHtml = isVatPayer() ? `
     <div class="sum"><div class="box">
       <dl class="vatrecap">
         <dt>Základ daně</dt><dd>${fmtMoney(grandTotal())}</dd>
         <dt>DPH ${fmtQty(state.vatRate)} %</dt><dd>${fmtMoney(vatAmount())}</dd>
+        ${rndRow}
       </dl>
       <div class="lbl">Celkem k úhradě</div>
       <div class="amt">${fmtMoney(grandTotalDue())}</div>
     </div></div>` : `
     <div class="sum"><div class="box">
+      ${rndRow ? `<dl class="vatrecap"><dt>Celkem</dt><dd>${fmtMoney(grandTotal())}</dd>${rndRow}</dl>` : ''}
       <div class="lbl">Celkem k úhradě</div>
-      <div class="amt">${fmtMoney(grandTotal())}</div>
+      <div class="amt">${fmtMoney(grandTotalDue())}</div>
     </div></div>`;
 
   $('invoice').innerHTML = `
@@ -886,11 +905,17 @@ function buildInvoiceDoc(){
   const widths = hq ? ['*',85] : [62,'*',76,85];
 
   const sumInner = [];
+  const rnd = roundingAmount();
+  const recap = [];
+  const recapRow = (k, v) => [{text:k, color:PDF_SOFT, alignment:'right'}, {text:v, bold:true, alignment:'right'}];
   if(isVatPayer()){
-    sumInner.push({ table:{ widths:['*','auto'], body:[
-      [{text:'Základ daně', color:PDF_SOFT, alignment:'right'}, {text:fmtMoney(grandTotal()), bold:true, alignment:'right'}],
-      [{text:'DPH '+fmtQty(state.vatRate)+' %', color:PDF_SOFT, alignment:'right'}, {text:fmtMoney(vatAmount()), bold:true, alignment:'right'}],
-    ]}, layout:{ defaultBorder:false, paddingLeft:()=>0, paddingRight:()=>0, paddingTop:()=>1, paddingBottom:()=>1 }, margin:[0,0,0,4] });
+    recap.push(recapRow('Základ daně', fmtMoney(grandTotal())));
+    recap.push(recapRow('DPH '+fmtQty(state.vatRate)+' %', fmtMoney(vatAmount())));
+  } else if(rnd) recap.push(recapRow('Celkem', fmtMoney(grandTotal())));
+  if(rnd) recap.push(recapRow('Zaokrouhlení', fmtMoneySigned(rnd)));
+  if(recap.length){
+    sumInner.push({ table:{ widths:['*','auto'], body: recap },
+      layout:{ defaultBorder:false, paddingLeft:()=>0, paddingRight:(i)=> i===0 ? 6 : 0, paddingTop:()=>1, paddingBottom:()=>1 }, margin:[0,0,0,4] });
   }
   sumInner.push({ text:'CELKEM K ÚHRADĚ', style:'sumLbl', alignment:'right' });
   sumInner.push({ text:fmtMoney(grandTotalDue()), bold:true, fontSize:16, alignment:'right', margin:[0,1,0,2] });
@@ -1038,6 +1063,7 @@ async function openFaktura(number){
     state = JSON.parse(JSON.stringify(rec.snapshot));
     if(state.vatRate === undefined) state.vatRate = 21;
     if(state.hideQty === undefined) state.hideQty = nastaveni.skrytMnozstvi !== false;
+    if(state.roundTotal === undefined) state.roundTotal = false;   /* starší faktura byla vystavena bez zaokrouhlení */
     fillForm(); refresh(); showTab('faktura');
     flash('Otevřena faktura ' + number + '.');
   }catch(e){ serverDown(); }
@@ -1074,6 +1100,7 @@ function fillForm(){
   $('sVat').checked = s.novat; $('sNote').value = s.note;
   $('sVatRate').value = state.vatRate;
   $('sHideQty').checked = hideQty();
+  $('sRound').checked = roundTotal();
 }
 function refresh(){
   if(!state.invoice.vsManual) state.invoice.vs = vsFromNumber(state.invoice.number);
@@ -1108,6 +1135,7 @@ bind('sNote', t=>state.supplier.note=t.value);
 bind('sVatRate', t=>{ state.vatRate = parseFloat(t.value) || 0; });
 $('sVat').addEventListener('change', e => { state.supplier.novat = e.target.checked; refresh(); });
 $('sHideQty').addEventListener('change', e => { state.hideQty = e.target.checked; refresh(); persist(); });
+$('sRound').addEventListener('change', e => { state.roundTotal = e.target.checked; refresh(); persist(); });
 
 $('itemsBox').addEventListener('input', e => {
   const row = e.target.closest('.item'); if(!row) return;
@@ -1457,6 +1485,7 @@ async function boot(){
   state = b.draft || freshState();
   if(state.vatRate === undefined) state.vatRate = 21;
   if(state.hideQty === undefined) state.hideQty = nastaveni.skrytMnozstvi !== false;
+  if(state.roundTotal === undefined) state.roundTotal = nastaveni.zaokrouhlovat !== false;
   if(!state.supplier) state.supplier = {...nastaveni.supplier};
   verze = b.verze || '';
   showVerze(); updNote('Verze ' + (verze || '?') + '.');

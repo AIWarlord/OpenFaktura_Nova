@@ -1,7 +1,7 @@
 {
-  "verze": "1.6.0",
-  "datum": "2026-10-08",
-  "popis": "Program se nově jmenuje Fakturator (dříve OpenFaktura). Složka, spouštěče OpenFaktura.bat / .command a adresa aktualizací zůstávají beze změny.",
+  "verze": "1.7.0",
+  "datum": "2026-10-09",
+  "popis": "Celková částka se zaokrouhluje na celé koruny, rozdíl je na faktuře vykázán jako řádek Zaokrouhlení (volba v Nastavení → Dodavatel, výchozí zapnuto).",
   "soubory": [
     "server.js",
     "web/index.html",

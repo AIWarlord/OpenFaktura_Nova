@@ -42,6 +42,7 @@ const DEFAULT_NASTAVENI = {
   rate: 650,
   vatRate: 21,
   skrytMnozstvi: true,   /* na faktuře jen položka a celkem (bez množství a ceny za MJ) */
+  zaokrouhlovat: true,   /* celkovou částku zaokrouhlit na celé koruny, rozdíl vykázat jako Zaokrouhlení */
   hubPronajem: false,    /* platím si pronájem HUB */
   hubCastka: 0,          /* výše pronájmu v Kč za měsíc */
   hubOdberatel: '',      /* název odběratele, kterému se pronájem přičítá (Line Art) */

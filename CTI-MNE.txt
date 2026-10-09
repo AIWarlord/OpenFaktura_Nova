@@ -59,6 +59,16 @@ ukládá i ke každé uložené faktuře, starší faktury se tedy otevřou tak,
 jak byly vystaveny.
 
 
+ZAOKROUHLENÍ NA CELÉ KORUNY
+---------------------------
+V Nastavení → Dodavatel je volba „Zaokrouhlovat celkovou částku na celé
+koruny“ (výchozí zapnuto). Řádky faktury zůstávají na haléře, celková částka
+k úhradě se zaokrouhlí matematicky na celé koruny a rozdíl (např. −0,49 Kč
+nebo +0,01 Kč) se na faktuře vykáže jako řádek „Zaokrouhlení“. QR platba
+i archiv pracují se zaokrouhlenou částkou. Faktury uložené před touto verzí
+se otevírají bez zaokrouhlení, tak jak byly vystaveny.
+
+
 PRONÁJEM HUB
 ------------
 V Nastavení → Pronájem zapněte „Platím si pronájem – HUB“ a zadejte měsíční
